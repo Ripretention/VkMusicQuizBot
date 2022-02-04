@@ -11,12 +11,14 @@ namespace VkMusicQuizBot
     {
         private YoutubeClient youtube = new YoutubeClient();
         private ProcessStartInfo ffmpegInfo;
-        public AudioTrackDownloader(FFMpegConfiguration cfg)
+        private string outputFormat;
+        public AudioTrackDownloader(FFMpegConfiguration cfg, string outputFormat = "ogg")
         {
             ffmpegInfo = new ProcessStartInfo(cfg.Path);
             ffmpegInfo.RedirectStandardInput = true;
             ffmpegInfo.RedirectStandardOutput = true;
             ffmpegInfo.UseShellExecute = false;
+            this.outputFormat = outputFormat;
         }
 
         public async Task<byte[]> Download(AudioTrack track)
@@ -52,7 +54,7 @@ namespace VkMusicQuizBot
         }
         private void prepareFFmpeg(string url)
         {
-            ffmpegInfo.Arguments = $"-loglevel panic -i {url} -ss 00:01:00 -t 10 -vn -f ogg pipe:1";
+            ffmpegInfo.Arguments = $"-loglevel panic -i {url} -ss 00:01:00 -t 10 -vn -f {outputFormat} pipe:1";
         }
 
         private async Task<string> getTrackDownloadUrl(string trackUrl)

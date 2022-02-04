@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Configuration.Json;
+﻿using Microsoft.Extensions.Configuration;
 
 namespace VkMusicQuizBot
 {
@@ -20,6 +16,7 @@ namespace VkMusicQuizBot
     {
         public VkConfiguration Vk { get; set; }
         public FFMpegConfiguration FFMpeg { get; set; }
+        public SpotifyConfiguration Spotify { get; set; }
     }
     public class VkConfiguration
     {
@@ -30,5 +27,10 @@ namespace VkMusicQuizBot
     public class FFMpegConfiguration
     {
         public string Path { get; set; }
+    }
+    public class SpotifyConfiguration
+    {
+        public string AccessToken { get; set; }
+        public string PlaylistSourceTitle { get; set; }
     }
 }
