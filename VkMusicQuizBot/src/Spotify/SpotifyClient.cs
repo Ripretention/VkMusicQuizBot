@@ -8,108 +8,56 @@ using System.Collections.Generic;
 
 namespace VkMusicQuizBot
 {
-    public class SpotifyClient
+    public class SpotifyClient : ISpotifyClient
     {
-        public readonly ISpotifyAPIClient Api;
+        public readonly ISpotifyAPI Api;
         public SpotifyClient(SpotifyConfiguration cfg)
         {
-            Api = new SpotifyAPIClient(cfg);
+            Api = new SpotifyAPI(cfg);
         }
-        public SpotifyClient(ISpotifyAPIClient api)
+        public SpotifyClient(ISpotifyAPI api)
         {
             Api = api ?? throw new ArgumentNullException(nameof(api));
         }
-    }
 
-    public class SpotifyAPIClient : ISpotifyAPIClient
-    {
-        private HttpClient client;
-        public uint Version { get; set; } = 1;
-        public SpotifyAPIClient(SpotifyConfiguration cfg, IDictionary<string, string> headers = null)
+        public async Task<IEnumerable<SpotifyPlaylist>> GetCurrentPlaylists(uint limit = 10, uint offset = 0)
         {
-            if (cfg == null)
-                throw new ArgumentNullException(nameof(cfg));
-            client = new HttpClient();
-            foreach (var param in (headers ?? new Dictionary<string, string>()).Append(new KeyValuePair<string, string>("Authorization", $"Bearer {cfg.AccessToken}")))
-                client.DefaultRequestHeaders.Add(param.Key, param.Value);
-        }
-
-        public async Task<T> Post<T, R>(string method, R data)
-        {
-            var response = await Post(method, new StringContent(JsonSerializer.Serialize(data)));
-            return await JsonSerializer.DeserializeAsync<T>(await response.ReadAsStreamAsync());
-        }
-        public Task<HttpContent> Post<T>(string method, T data) =>
-            Post(method, new StringContent(JsonSerializer.Serialize(data)));
-
-        public Task<HttpContent> Post(string method, HttpContent data) =>
-            Call(method, HttpMethod.Post, data);
-
-        public async Task<T> Get<T>(string method, IDictionary<string, string> urlParams = null)
-        {
-            var response = await Get(method, urlParams);
-            return await JsonSerializer.DeserializeAsync<T>(await response.ReadAsStreamAsync());
-        }
-        public Task<HttpContent> Get(string method, IDictionary<string, string> urlParams = null)
-        {
-            method += urlParams != null && urlParams.Any()
-                 ? $"?{String.Join("&", urlParams.Select(p => HttpUtility.UrlEncode($"{p.Key}={p.Value}")).ToArray())}"
-                 : String.Empty;
-
-            return Call(method, HttpMethod.Get, null);
-        }
-
-        public async Task<T> Call<T>(string method, HttpMethod reqMethod, HttpContent data = null)
-        {
-            var response = await Call(method, reqMethod, data);
-            return await JsonSerializer.DeserializeAsync<T>(await response.ReadAsStreamAsync());
-        }
-        public async Task<HttpContent> Call(string method, HttpMethod reqMethod, HttpContent data = null)
-        {
-            var response = await client.SendAsync(new HttpRequestMessage
+            var response = await Api.Get<SpotifyPlaylistCollection>(@"me/playlists", new Dictionary<string, string>
             {
-                Method = reqMethod,
-                Content = data,
-                RequestUri = new Uri(constructMethorUrl(method))
+                { "limit", limit.ToString() },
+                { "offset", offset.ToString() }
             });
 
-            if (!response.IsSuccessStatusCode)
-                await handleErrorSpotifyResponse(response);
-
-            return response.Content;
+            return response.Items;
         }
-        private async Task handleErrorSpotifyResponse(HttpResponseMessage response)
+        public Task<SpotifyPlaylist> GetPlaylist(string id, string fields = null, string market = null)
         {
-            var status = response.StatusCode.ToString();
-            string message = String.Empty;
-            SpotifyExceptionResponseBody responseBody = null;
+            var @params = new Dictionary<string, string>();
+            if (fields != null)
+                @params.Add("fields", fields);
+            if (market != null)
+                @params.Add("market", market);
 
-            try
-            {
-                responseBody = (await JsonSerializer.DeserializeAsync<SpotifyExceptionResponse>(await response.Content.ReadAsStreamAsync()))?.Body;
-                message = responseBody?.ToString() ?? String.Empty;
-            }
-            catch (Exception)
-            {
-                message = "JSON-parse has failed";
-            }
-
-            if (status == "Unauthorized")
-                throw new SpotifyAuthorizationException(message);
-            else if (responseBody != null)
-                throw new SpotifyRequestException(responseBody);
-
-            throw new SpotifyRequestException(message);
+            return Api.Get<SpotifyPlaylist>($@"playlists/{id}", @params);
         }
+        public async Task<IEnumerable<SpotifyTrack>> GetPlaylistTracks(string id, uint limit = 10, uint offset = 0) =>
+            (await GetPlaylistItems(id, limit, offset)).Select(item => item.Track);
 
-        private string constructMethorUrl(string method) => $@"https://api.spotify.com/v{Version}/{method}";
+        public async Task<IEnumerable<SpotifyTrackCollectionItem>> GetPlaylistItems(string id, uint limit = 10, uint offset = 0)
+        {
+            var response = await Api.Get<SpotifyTrackCollection>($@"playlists/{id}/tracks", new Dictionary<string, string>
+            {
+                { "limit", limit.ToString() },
+                { "offset", offset.ToString() }
+            });
+
+            return response.Items;
+        }
     }
-    public interface ISpotifyAPIClient
+
+    public interface ISpotifyClient
     {
-        public uint Version { get; set; }
-        public Task<T> Get<T>(string method, IDictionary<string, string> urlParams = null);
-        public Task<HttpContent> Get(string method, IDictionary<string, string> urlParams = null);
-        public Task<T> Call<T>(string method, HttpMethod reqMethod, HttpContent data = null);
-        public Task<HttpContent> Call(string method, HttpMethod reqMethod, HttpContent data = null);
+        public Task<IEnumerable<SpotifyPlaylist>> GetCurrentPlaylists(uint limit = 10, uint offset = 0);
+        public Task<SpotifyPlaylist> GetPlaylist(string id, string fields = null, string market = null);
     }
 }

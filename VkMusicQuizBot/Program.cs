@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using System.Linq;
 using System.Collections.Generic;
 using Microsoft.Extensions.Configuration;
 
@@ -11,9 +12,9 @@ namespace VkMusicQuizBot
         {
             var cfg = new BotConfigurationBuilder().Build().Get<BotConfiguration>();
             var spotify = new SpotifyClient(cfg.Spotify);
-            var respone = await spotify.Api.Get(@"me/playlists", new Dictionary<string, string> { { "limit", "10" }, { "offset", "0" } });
+            var respone = await spotify.GetPlaylistTracks("succ");
 
-            Console.WriteLine(await respone.ReadAsStringAsync());
+            Console.WriteLine(respone.First().Name);
         }
     }
 }
