@@ -59,5 +59,7 @@ namespace VkMusicQuizBot
     {
         public Task<IEnumerable<SpotifyPlaylist>> GetCurrentPlaylists(uint limit = 10, uint offset = 0);
         public Task<SpotifyPlaylist> GetPlaylist(string id, string fields = null, string market = null);
+        public Task<IEnumerable<SpotifyTrack>> GetPlaylistTracks(string id, uint limit = 10, uint offset = 0);
+        public Task<IEnumerable<SpotifyTrackCollectionItem>> GetPlaylistItems(string id, uint limit = 10, uint offset = 0);
     }
 }

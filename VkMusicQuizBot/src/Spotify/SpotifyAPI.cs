@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Web;
 using System.Linq;
+using System.Text;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -12,11 +13,11 @@ namespace VkMusicQuizBot
     {
         private HttpClient client;
         public uint Version { get; set; } = 1;
-        public SpotifyAPI(SpotifyConfiguration cfg, IDictionary<string, string> headers = null)
+        public SpotifyAPI(SpotifyConfiguration cfg, IDictionary<string, string> headers = null, HttpMessageHandler clientHandler = null)
         {
             if (cfg == null)
                 throw new ArgumentNullException(nameof(cfg));
-            client = new HttpClient();
+            client = clientHandler != null ? new HttpClient(clientHandler) : new HttpClient();
             foreach (var param in (headers ?? new Dictionary<string, string>()).Append(new KeyValuePair<string, string>("Authorization", $"Bearer {cfg.AccessToken}")))
                 client.DefaultRequestHeaders.Add(param.Key, param.Value);
         }
@@ -39,25 +40,25 @@ namespace VkMusicQuizBot
             where T : class
             where R : class
         {
-            var response = await Put(method, new StringContent(JsonSerializer.Serialize(data)));
+            var response = await Put(method, new StringContent(JsonSerializer.Serialize(data), Encoding.UTF8, "application/json"));
             return await JsonSerializer.DeserializeAsync<T>(await response.ReadAsStreamAsync());
         }
         public Task<HttpContent> Put<T>(string method, T data) where T : class =>
-            Put(method, new StringContent(JsonSerializer.Serialize(data)));
-        public Task<HttpContent> Put(string method, HttpContent data) =>
-            Call(method, HttpMethod.Put, data);
+            typeof(HttpContent).IsAssignableFrom(data.GetType())
+                ? Call(method, HttpMethod.Put, data as HttpContent)
+                : Put(method, new StringContent(JsonSerializer.Serialize(data), Encoding.UTF8, "application/json"));
 
         public async Task<T> Post<T, R>(string method, R data) 
             where T : class
             where R : class
         {
-            var response = await Post(method, new StringContent(JsonSerializer.Serialize(data)));
+            var response = await Post(method, new StringContent(JsonSerializer.Serialize(data), Encoding.UTF8, "application/json"));
             return await JsonSerializer.DeserializeAsync<T>(await response.ReadAsStreamAsync());
         }
         public Task<HttpContent> Post<T>(string method, T data) where T : class =>
-            Post(method, new StringContent(JsonSerializer.Serialize(data)));
-        public Task<HttpContent> Post(string method, HttpContent data) =>
-            Call(method, HttpMethod.Post, data);
+            typeof(HttpContent).IsAssignableFrom(data.GetType()) 
+                ? Call(method, HttpMethod.Post, data as HttpContent) 
+                : Post(method, new StringContent(JsonSerializer.Serialize(data), Encoding.UTF8, "application/json"));
 
         public async Task<T> Get<T>(string method, IDictionary<string, string> urlParams = null) where T : class
         {
@@ -130,12 +131,10 @@ namespace VkMusicQuizBot
             where T : class
             where R : class;
         public Task<HttpContent> Put<T>(string method, T data) where T : class;
-        public Task<HttpContent> Put(string method, HttpContent data);
         public Task<T> Post<T, R>(string method, R data)
             where T : class
             where R : class;
         public Task<HttpContent> Post<T>(string method, T data) where T : class;
-        public Task<HttpContent> Post(string method, HttpContent data);
         public Task<T> Get<T>(string method, IDictionary<string, string> urlParams = null) where T : class;
         public Task<HttpContent> Get(string method, IDictionary<string, string> urlParams = null);
         public Task<T> Call<T>(string method, HttpMethod reqMethod, HttpContent data = null) where T : class;
