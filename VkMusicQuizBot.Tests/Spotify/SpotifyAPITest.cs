@@ -18,6 +18,7 @@ namespace VkMusicQuizBot.Tests
         private SpotifyAPI api;
         private SpotifyConfiguration cfg;
         private TrackNameUpdateRequest postReqData = new TrackNameUpdateRequest { Id = "f1", NewName = "NotHazy" };
+        private TrackAddRequest putReqData = new TrackAddRequest { Id = "ds", Name = "Longest", Body = new byte[64] };
         [SetUp]
         public void Setup()
         {
@@ -30,6 +31,11 @@ namespace VkMusicQuizBot.Tests
             api = new SpotifyAPI(cfg, null, messageHandlerMock.Object);
         }
 
+        [Test]
+        public void ProvideNullConfigTest() =>
+            Assert.Throws<System.ArgumentNullException>(() => new SpotifyAPI(null));
+
+        #region GET
         [Test]
         public async Task MethodGetTest()
         {
@@ -47,6 +53,9 @@ namespace VkMusicQuizBot.Tests
             Assert.AreEqual("a1", response.Id);
             Assert.AreEqual("Hazy", response.Name);
         }
+        #endregion
+
+        #region POST
         [Test]
         public async Task MethodPostTest()
         {
@@ -73,7 +82,9 @@ namespace VkMusicQuizBot.Tests
             Assert.AreEqual(postReqData.Id, response.Id);
             Assert.AreEqual(postReqData.NewName, response.Name);
         }
+        #endregion
 
+        #region DELETE
         [Test]
         public async Task MethodDeleteTest()
         {
@@ -91,6 +102,36 @@ namespace VkMusicQuizBot.Tests
             Assert.AreEqual(id, response.Id);
             Assert.IsTrue(response.Successfully);
         }
+        #endregion
+
+        #region PUT
+        [Test]
+        public async Task MethodPutTest()
+        {
+            var requestData = new StringContent(JsonSerializer.Serialize(putReqData), System.Text.Encoding.UTF8, "application/json");
+
+            var response = await api.Put("track/put", putReqData);
+            var json = await response.ReadAsStreamAsync();
+
+            Assert.DoesNotThrowAsync(async () => { await JsonDocument.ParseAsync(json); });
+        }
+        [Test]
+        public async Task MethodPutWithSerializationTest()
+        {
+            var response = await api.Put("track/put", putReqData);
+            var json = await response.ReadAsStreamAsync();
+
+            Assert.DoesNotThrowAsync(async () => { await JsonDocument.ParseAsync(json); });
+        }
+        [Test]
+        public async Task MethodPutWithSerializationAndDeserializationTest()
+        {
+            var response = await api.Put<TrackTestSample, TrackAddRequest>("track/put", putReqData);
+
+            Assert.AreEqual(putReqData.Id, response.Id);
+            Assert.AreEqual(putReqData.Name, response.Name);
+        }
+        #endregion
 
         private async Task<HttpResponseMessage> httpMessageHandle(HttpRequestMessage request)
         {
@@ -112,6 +153,15 @@ namespace VkMusicQuizBot.Tests
                         Successfully = true 
                     }
                 ), System.Text.Encoding.UTF8, "application/json");
+            if (url.Contains("track/put") && request.Method == HttpMethod.Put)
+            {
+                var @params = await JsonSerializer.DeserializeAsync<TrackAddRequest>(await request.Content.ReadAsStreamAsync());
+                response.Content = new StringContent(JsonSerializer.Serialize(new TrackTestSample
+                {
+                    Id = @params.Id,
+                    Name = @params.Name
+                }));
+            }
 
             return response;
         }
@@ -131,5 +181,9 @@ namespace VkMusicQuizBot.Tests
     {
         public string Id { get; set; }
         public bool Successfully { get; set; }
+    }
+    class TrackAddRequest : TrackTestSample
+    {
+        public byte[] Body { get; set; }
     }
 }
