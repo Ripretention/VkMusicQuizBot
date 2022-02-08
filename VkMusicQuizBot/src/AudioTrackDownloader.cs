@@ -7,7 +7,7 @@ using System.Collections.Generic;
 
 namespace VkMusicQuizBot
 {
-    public class AudioTrackDownloader
+    public class AudioTrackDownloader : IAudioTrackDownloader
     {
         private YoutubeClient youtube = new YoutubeClient();
         private ProcessStartInfo ffmpegInfo;
@@ -80,6 +80,10 @@ namespace VkMusicQuizBot
         }
     }
 
+    public interface IAudioTrackDownloader
+    {
+        public Task<byte[]> Download(AudioTrack track);
+    }
     public class AudioTrack
     {
         public string Name;
