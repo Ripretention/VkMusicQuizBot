@@ -13,8 +13,11 @@ namespace VkMusicQuizBot
             this.downloader = downloader ?? throw new ArgumentNullException(nameof(downloader));
         }
         
-        public async Task<QuizProcess> Start(IEnumerable<AudioTrack> tracks, TimeSpan duration)
+        public async Task<QuizProcess> Start(IEnumerable<AudioTrack> tracks, TimeSpan? duration = null)
         {
+            if (tracks == null || tracks.Count() == 0)
+                throw new ArgumentException("Tracks can't be empty.");
+
             var pickedTracks = pickRandomTracks(tracks);
             var questionTrackBody = await downloader.Download(pickedTracks.First());
 
@@ -26,7 +29,7 @@ namespace VkMusicQuizBot
                     Title = track.Title,
                     IsRight = track.Title == pickedTracks.First().Title
                 }),
-                ExpiredAt = DateTime.Now + (duration == null ? duration : new TimeSpan(0, 0, 30)),
+                ExpiredAt = DateTime.Now + (duration ?? new TimeSpan(0, 0, 30)),
             };
         }
         private IEnumerable<AudioTrack> pickRandomTracks(IEnumerable<AudioTrack> tracks)

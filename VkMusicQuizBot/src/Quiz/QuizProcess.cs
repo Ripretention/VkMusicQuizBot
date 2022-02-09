@@ -6,7 +6,7 @@ namespace VkMusicQuizBot
 {
     public class QuizProcess
     {
-        public DateTime ExpiredAt { get; set; }
+        public DateTime? ExpiredAt { get; set; }
         public byte[] QuestionBody { get; set; }
         public IEnumerable<QuizOption> Options { get; set; }
         public IReadOnlyList<QuizAnswer> Answers { get => answers.AsReadOnly(); }
@@ -20,7 +20,7 @@ namespace VkMusicQuizBot
                 throw new ArgumentNullException(nameof(answer));
             if (answers.Any(answ => answ.Owner == answer.Owner))
                 throw new ArgumentException("Answer already has been added.");
-            if (Options.All(opt => opt.Title != answer.Option.Title))
+            if (Options == null || Options.All(opt => opt.Title != answer.Option.Title))
                 throw new UnexpectedOptionException("Undefined option.");
 
             answers.Add(answer);
