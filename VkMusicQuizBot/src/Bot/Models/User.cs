@@ -1,12 +1,14 @@
 ﻿using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace VkMusicQuizBot
 {
     public class User : IUser, IEquatable<User>
     {
+        [Key]
         public int Id { get; set; }
         public uint Score { get; set; } = 0;
-        public UserAccess Access { get; set; } = UserAccess.Default;
+        public UserAccess Access { get; set; } = UserAccess.Unconfirmed;
         public string GetAppeal(string label = "Пользователь") =>
             $"[{(Id < 0 ? "club" : "id")}{Math.Abs(Id)}|{label}]";
 
@@ -33,6 +35,6 @@ namespace VkMusicQuizBot
 
     public enum UserAccess
     {
-        Banned, Default, Administration, Owner
+        Banned, Unconfirmed, Default, Administration, Owner
     }
 }

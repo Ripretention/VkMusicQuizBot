@@ -17,6 +17,8 @@ namespace VkMusicQuizBot
         public VkConfiguration Vk { get; set; }
         public FFMpegConfiguration FFMpeg { get; set; }
         public SpotifyConfiguration Spotify { get; set; }
+        public DatabaseConfiguration Database { get; set; }
+        public System.Collections.Generic.IEnumerable<int> Developers { get; set; }
     }
     public class VkConfiguration
     {
@@ -32,5 +34,9 @@ namespace VkMusicQuizBot
     {
         public string AccessToken { get; set; }
         public string PlaylistSourceTitle { get; set; }
+    }
+    public class DatabaseConfiguration
+    {
+        public string PathFolder { get; set; }
     }
 }
