@@ -40,18 +40,7 @@ namespace VkMusicQuizBot
             });
             cmdHandler.HearCommand(new Regex(@"^!(?:conf.*|разрешение|add user|разрешить) ?(\d*)$", RegexOptions.IgnoreCase), async context =>
             {
-                long? memberId = null;
-                var hasForwards = context.Body.ForwardedMessages.Count > 0 || context.Body.ReplyMessage != null;
-                if (hasForwards)
-                    memberId = context.Body.ReplyMessage != null
-                        ? context.Body.ReplyMessage.FromId
-                        : context.Body.ForwardedMessages.First().FromId;
-                else if (context.Match.Groups[1]?.Value != null)
-                {
-                    long parsedId = 0;
-                    long.TryParse(context.Match.Groups[1].Value, out parsedId);
-                    memberId = parsedId != 0 ? parsedId : memberId;
-                }
+                long? memberId = await new Utils.MemberIdResolver(context.Api).Resolve(context.Body, context.Match.Groups[1].Value);
 
                 if (memberId == null)
                 {

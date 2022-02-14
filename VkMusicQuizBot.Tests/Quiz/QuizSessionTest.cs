@@ -4,7 +4,7 @@ using System.Linq;
 using NUnit.Framework;
 using System.Threading.Tasks;
 
-namespace VkMusicQuizBot.Tests
+namespace VkMusicQuizBot.Tests.Quiz
 {
     [TestFixture]
     public class QuizSessionTest

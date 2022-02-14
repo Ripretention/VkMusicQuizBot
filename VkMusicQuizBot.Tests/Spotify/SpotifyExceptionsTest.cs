@@ -7,7 +7,7 @@ using System.Threading;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace VkMusicQuizBot.Tests
+namespace VkMusicQuizBot.Tests.Spotify
 {
     [TestFixture]
     public class SpotifyExceptionsTest

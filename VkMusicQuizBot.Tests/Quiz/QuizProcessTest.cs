@@ -2,7 +2,7 @@
 using System.Linq;
 using NUnit.Framework;
 
-namespace VkMusicQuizBot.Tests
+namespace VkMusicQuizBot.Tests.Quiz
 {
     [TestFixture]
     public class QuizProcessTest

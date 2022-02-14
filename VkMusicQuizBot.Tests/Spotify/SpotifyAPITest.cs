@@ -10,7 +10,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 
-namespace VkMusicQuizBot.Tests
+namespace VkMusicQuizBot.Tests.Spotify
 {
     [TestFixture]
     public class SpotifyAPITest
