@@ -16,7 +16,7 @@ namespace VkMusicQuizBot
             var vkApi = new VkApi();
             await vkApi.AuthorizeAsync(new VkNet.Model.ApiAuthParams { AccessToken = cfg.Vk.AccessToken });
             var longpoll = new Longpoll(vkApi, (long)cfg.Vk.GroupId);
-            
+
             var admCommands = new AdministrationCommands(longpoll.Handler, db, cfg.Developers);
             admCommands.Release();
 

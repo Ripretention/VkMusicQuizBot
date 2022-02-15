@@ -8,7 +8,7 @@ namespace VkMusicQuizBot
     public class SpotifyClient : ISpotifyClient
     {
         public readonly ISpotifyAPI Api;
-        public SpotifyClient(SpotifyConfiguration cfg)
+        public SpotifyClient(SpotifyAuth cfg)
         {
             Api = new SpotifyAPI(cfg);
         }

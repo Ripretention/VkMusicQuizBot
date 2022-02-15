@@ -16,7 +16,7 @@ namespace VkMusicQuizBot.Tests.Spotify
     public class SpotifyAPITest
     {
         private SpotifyAPI api;
-        private SpotifyConfiguration cfg;
+        private SpotifyAuth auth;
         private TrackNameUpdateRequest postReqData = new TrackNameUpdateRequest { Id = "f1", NewName = "NotHazy" };
         private TrackAddRequest putReqData = new TrackAddRequest { Id = "ds", Name = "Longest", Body = new byte[64] };
         [SetUp]
@@ -27,8 +27,8 @@ namespace VkMusicQuizBot.Tests.Spotify
                 .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
                 .Returns((HttpRequestMessage request, CancellationToken token) => httpMessageHandle(request));
 
-            cfg = new SpotifyConfiguration { AccessToken = "ACCESS_TOKEN", PlaylistSourceTitle = "PLAYLIST" };
-            api = new SpotifyAPI(cfg, null, messageHandlerMock.Object);
+            auth = new SpotifyAuth(new SpotifyAuthConfiguration { AccessToken = "ACCESS_TOKEN", RefreshToken = "REFRESH_TOKEN" });
+            api = new SpotifyAPI(auth, null, messageHandlerMock.Object);
         }
 
         [Test]

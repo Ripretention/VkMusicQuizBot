@@ -12,7 +12,7 @@ namespace VkMusicQuizBot.Tests.Spotify
     [TestFixture]
     public class SpotifyExceptionsTest
     {
-        private SpotifyConfiguration cfg;
+        private SpotifyAuth auth;
         private SpotifyAPI api;
         [SetUp]
         public void Setup()
@@ -36,8 +36,8 @@ namespace VkMusicQuizBot.Tests.Spotify
                     };
                 });
 
-            cfg = new SpotifyConfiguration { AccessToken = "ACCESS_TOKEN", PlaylistSourceTitle = "PLAYLIST" };
-            api = new SpotifyAPI(cfg, null, messageHandlerMock.Object);
+            auth = new SpotifyAuth(new SpotifyAuthConfiguration { AccessToken = "ACCESS_TOKEN", RefreshToken = "REFRESH_TOKEN" });
+            api = new SpotifyAPI(auth, null, messageHandlerMock.Object);
         }
 
         [Test]

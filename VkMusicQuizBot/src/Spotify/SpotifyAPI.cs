@@ -12,13 +12,13 @@ namespace VkMusicQuizBot
     public class SpotifyAPI : ISpotifyAPI
     {
         private HttpClient client;
+        private SpotifyAuth auth;
         public uint Version { get; set; } = 1;
-        public SpotifyAPI(SpotifyConfiguration cfg, IDictionary<string, string> headers = null, HttpMessageHandler clientHandler = null)
+        public SpotifyAPI(SpotifyAuth auth, IDictionary<string, string> headers = null, HttpMessageHandler clientHandler = null)
         {
-            if (cfg == null)
-                throw new ArgumentNullException(nameof(cfg));
+            this.auth = auth ?? throw new ArgumentNullException(nameof(auth));
             client = clientHandler != null ? new HttpClient(clientHandler) : new HttpClient();
-            foreach (var param in (headers ?? new Dictionary<string, string>()).Append(new KeyValuePair<string, string>("Authorization", $"Bearer {cfg.AccessToken}")))
+            foreach (var param in (headers ?? new Dictionary<string, string>()).Append(new KeyValuePair<string, string>("Authorization", $"Bearer {this.auth}")))
                 client.DefaultRequestHeaders.Add(param.Key, param.Value);
         }
 
@@ -77,18 +77,22 @@ namespace VkMusicQuizBot
         private string encodeQueryData(IDictionary<string, string> urlParams = null) => 
             $"?{String.Join("&", urlParams.Select(p => HttpUtility.UrlEncode($"{p.Key}={p.Value}")).ToArray())}";
 
-        public async Task<T> Call<T>(string method, HttpMethod reqMethod, HttpContent data = null) where T : class
+        public Task<T> Call<T>(string method, HttpMethod reqMethod, HttpContent data = null) where T : class =>
+            Call<T>(new Uri(constructMethorUrl(method)), reqMethod, data);
+        public Task<HttpContent> Call(string method, HttpMethod reqMethod, HttpContent data = null) =>
+            Call(new Uri(constructMethorUrl(method)), reqMethod, data);
+        public async Task<T> Call<T>(Uri uri, HttpMethod reqMethod, HttpContent data = null) where T : class
         {
-            var response = await Call(method, reqMethod, data);
+            var response = await Call(uri, reqMethod, data);
             return await JsonSerializer.DeserializeAsync<T>(await response.ReadAsStreamAsync());
         }
-        public async Task<HttpContent> Call(string method, HttpMethod reqMethod, HttpContent data = null)
+        public async Task<HttpContent> Call(Uri uri, HttpMethod reqMethod, HttpContent data = null)
         {
             var response = await client.SendAsync(new HttpRequestMessage
             {
                 Method = reqMethod,
                 Content = data,
-                RequestUri = new Uri(constructMethorUrl(method))
+                RequestUri = uri
             });
 
             if (!response.IsSuccessStatusCode)
@@ -137,6 +141,8 @@ namespace VkMusicQuizBot
         public Task<HttpContent> Post<T>(string method, T data) where T : class;
         public Task<T> Get<T>(string method, IDictionary<string, string> urlParams = null) where T : class;
         public Task<HttpContent> Get(string method, IDictionary<string, string> urlParams = null);
+        public Task<T> Call<T>(Uri uri, HttpMethod reqMethod, HttpContent data = null) where T : class;
+        public Task<HttpContent> Call(Uri uri, HttpMethod reqMethod, HttpContent data = null);
         public Task<T> Call<T>(string method, HttpMethod reqMethod, HttpContent data = null) where T : class;
         public Task<HttpContent> Call(string method, HttpMethod reqMethod, HttpContent data = null);
     }

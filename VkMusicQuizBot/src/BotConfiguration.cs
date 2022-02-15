@@ -32,8 +32,13 @@ namespace VkMusicQuizBot
     }
     public class SpotifyConfiguration
     {
-        public string AccessToken { get; set; }
         public string PlaylistSourceTitle { get; set; }
+        public SpotifyAuthConfiguration Auth { get; set; }
+    }
+    public class SpotifyAuthConfiguration
+    {
+        public string AccessToken { get; set; }
+        public string RefreshToken { get; set; }
     }
     public class DatabaseConfiguration
     {
