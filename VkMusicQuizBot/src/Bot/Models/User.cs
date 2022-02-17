@@ -1,14 +1,18 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
 
 namespace VkMusicQuizBot
 {
     public class User : IUser, IEquatable<User>
     {
         [Key]
-        public int Id { get; set; }
+        public long Id { get; set; }
         public uint Score { get; set; } = 0;
+        
         public UserAccess Access { get; set; } = UserAccess.Unconfirmed;
+        public UserStatistic Statistic { get; set; } = new UserStatistic();
         public string GetAppeal(string label = "Пользователь") =>
             $"[{(Id < 0 ? "club" : "id")}{Math.Abs(Id)}|{label}]";
 
@@ -20,19 +24,39 @@ namespace VkMusicQuizBot
             obj != null
                 ? Equals(obj as User)
                 : false;
-        public override int GetHashCode() => Id;
+        public override int GetHashCode() => (int)Id;
         public override string ToString() =>
             $"{(Id < 0 ? "Group" : "User")}-{Math.Abs(Id)}";
+    }
+    public class UserStatistic : IUserStatistic
+    {
+        [Key]
+        public long Id { get; set; }
+        public uint WinCount { get; set; } = 0;
+        public uint LoseCount { get; set; } = 0;
+        [NotMapped]
+        public uint TotalCount { get => WinCount + LoseCount; }
+        public override string ToString() =>
+            TotalCount <= 0
+                ? "неизвестна"
+                : $"{WinCount.ToString("N0")} побед / {TotalCount.ToString("N0")} игр ({((float)WinCount *100/TotalCount).ToString("P")} winrate)";
     }
 
     public interface IUser
     {
-        public int Id { get; set; }
+        public long Id { get; set; }
         public uint Score { get; set; }
         public UserAccess Access { get; set; }
+        public UserStatistic Statistic { get; set; }
         public string GetAppeal(string label);
     }
-
+    public interface IUserStatistic
+    {
+        public long Id { get; set; }
+        public uint WinCount { get; set; }
+        public uint LoseCount { get; set; }
+        public uint TotalCount { get => WinCount + LoseCount; }
+    }
     public enum UserAccess
     {
         Banned, Unconfirmed, Default, Administration, Owner

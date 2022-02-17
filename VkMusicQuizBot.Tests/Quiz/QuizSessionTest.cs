@@ -52,13 +52,12 @@ namespace VkMusicQuizBot.Tests.Quiz
         [Test]
         public async Task TrackRandomPickTest()
         {
-            var quizSession = new QuizSession(audioDownloaderMock.Object);
 
             for (int i = 1; i < 3; i++)                
-                Assert.AreEqual(i, (await quizSession.Start(tracks.Take(i))).Options.Count());
+                Assert.AreEqual(i, (await new QuizSession(audioDownloaderMock.Object).Create(tracks.Take(i), 0)).Start().Process.Options.Count());
 
-            Assert.ThrowsAsync<ArgumentException>(async () => await quizSession.Start(null));
-            Assert.ThrowsAsync<ArgumentException>(async () => await quizSession.Start(new AudioTrack[0]));
+            Assert.ThrowsAsync<ArgumentException>(async () => await new QuizSession(audioDownloaderMock.Object).Create(null, 0));
+            Assert.ThrowsAsync<ArgumentException>(async () => await new QuizSession(audioDownloaderMock.Object).Create(new AudioTrack[0], 0));
         }
     }
 }

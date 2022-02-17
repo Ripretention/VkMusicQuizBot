@@ -6,6 +6,7 @@ namespace VkMusicQuizBot
 {
     public class QuizProcess
     {
+        public long CreatorId { get; set; }
         public DateTime? ExpiredAt { get; set; }
         public byte[] QuestionBody { get; set; }
         public IEnumerable<QuizOption> Options { get; set; }
@@ -28,7 +29,7 @@ namespace VkMusicQuizBot
     }
     public class QuizAnswer
     {
-        public int Owner { get; set; }
+        public long Owner { get; set; }
         public QuizOption Option { get; set; }
     }
     public class QuizOption

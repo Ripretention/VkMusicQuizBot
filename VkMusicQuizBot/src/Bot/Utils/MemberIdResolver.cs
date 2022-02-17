@@ -26,6 +26,9 @@ namespace VkMusicQuizBot.Utils
         }
         public async Task<long?> Resolve(string str)
         {
+            if (str == null || str == System.String.Empty)
+                return null;
+
             var idMatch = new Regex(@"(id|club|public)(\d+)", RegexOptions.IgnoreCase).Match(str);
             if (idMatch.Success)
                 return (idMatch.Groups[1].Value == "id" ? 1 : -1) * long.Parse(idMatch.Groups[2].Value);

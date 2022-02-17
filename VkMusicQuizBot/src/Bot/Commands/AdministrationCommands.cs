@@ -20,7 +20,7 @@ namespace VkMusicQuizBot
             var cmdHandler = lpHandler.CreateGroup(checkAccess);
             cmdHandler.HearCommand(new[] { "!state", "!test", "!тест" }, context => context.ReplyAsync($"Work 🔌"));
             cmdHandler.HearCommand(new Regex(@"^!(?:access|доступ)$", RegexOptions.IgnoreCase), context => 
-                context.ReplyAsync($"👤 Уровень ваших прав: {db.Users.Find((int)context.Body.FromId)?.Access.ToString() ?? "неавторизован"}"));
+                context.ReplyAsync($"👤 Уровень ваших прав: {db.Users.Find(context.Body.FromId)?.Access.ToString() ?? "неавторизован"}"));
             cmdHandler.HearCommand(new Regex(@"^!(?:up|ап|update|auth[a-z]*)$", RegexOptions.IgnoreCase), async context =>
             {
                 if (db.Users.Any(usr => usr.Id == context.Body.FromId))
@@ -29,11 +29,13 @@ namespace VkMusicQuizBot
                     return;
                 }
 
-                db.Users.Add(new User 
+                var result = db.Users.Add(new User 
                 { 
-                    Id = (int)context.Body.FromId,
+                    Id = context.Body.FromId.Value,
                     Access = UserAccess.Administration
                 });
+                System.Console.WriteLine(result.State);
+
                 await db.SaveChangesAsync();
                 await context.ReplyAsync(@"👤 Вы успешно авторизовались.");
             });
@@ -46,7 +48,7 @@ namespace VkMusicQuizBot
                     await context.ReplyAsync(@"🔭 Мне не удалось распознать пользователя.");
                     return;
                 }
-                var user = await db.Users.FindAsync((int)memberId);
+                var user = await db.Users.FindAsync(memberId.Value);
                 if (user != null)
                 {
                     await context.ReplyAsync(@$"👣 {user.GetAppeal()} уже авторизован.");
@@ -55,7 +57,7 @@ namespace VkMusicQuizBot
 
                 user = db.Users.Add(new User
                 {
-                    Id = (int)memberId,
+                    Id = memberId.Value,
                     Access = UserAccess.Default
                 }).Entity;
                 await db.SaveChangesAsync();
@@ -70,13 +72,13 @@ namespace VkMusicQuizBot
                     await context.ReplyAsync(@"🔭 Мне не удалось распознать пользователя.");
                     return;
                 }
-                var user = await db.Users.FindAsync((int)memberId);
+                var user = await db.Users.FindAsync(memberId);
                 if (user == null)
                 {
                     await context.ReplyAsync(@$"👣 [{(memberId > 0 ? "id" : "club")}{System.Math.Abs(memberId.Value)}|Пользователь] не авторизован.");
                     return;
                 }
-                var sender = await db.Users.FindAsync((int)context.Body.FromId);
+                var sender = await db.Users.FindAsync(context.Body.FromId);
                 if (sender == null || sender.Access < user.Access)
                 {
                     await context.ReplyAsync($"❌ У Вас недостаточно прав, чтобы понизить права {user.GetAppeal()}");
