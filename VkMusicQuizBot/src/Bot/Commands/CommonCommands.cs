@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using VkNet.Model;
 using VkNetLongpoll;
 using VkNet.Model.RequestParams;
@@ -45,6 +46,57 @@ namespace VkMusicQuizBot
                     ",
                     DisableMentions = true 
                 });
+            });
+            cmdHandler.HearCommand(new Regex(@"^!(?:quiz|викторина|game|play) (?:choose|выбрать|select) (\d+)-(\d+) (\d+)", RegexOptions.IgnoreCase), async context =>
+            {
+                long peerId = 0;
+                long ownerId = 0;
+                int optionId = 0;
+                try
+                {
+                    peerId = long.Parse(context.Match.Groups[1].Value.Trim());
+                    ownerId = long.Parse(context.Match.Groups[2].Value.Trim());
+                    optionId = int.Parse(context.Match.Groups[3].Value.Trim());
+                } 
+                catch (Exception)
+                {
+                    await context.ReplyAsync("Неверный интидификатор");
+                    return;
+                }
+
+                QuizProcess quiz;
+                try
+                {
+                    quiz = currentQuizSessions[peerId].First(qProcess => qProcess.CreatorId == ownerId);
+                }
+                catch (Exception)
+                {
+                    await context.ReplyAsync($"Викторина не существует.");
+                    return;
+                }
+
+                try
+                {
+                    quiz.AddAnswer(new QuizAnswer
+                    {
+                        Owner = context.Body.FromId.Value,
+                        Option = quiz.Options.ElementAt(optionId)
+                    });
+                    await context.ReplyAsync("Ответ принят.");
+                }
+                catch (ExpiredOptionException)
+                {
+                    await context.ReplyAsync("Викторина заверешена");
+                }
+                catch (ArgumentException)
+                {
+                    await context.ReplyAsync("Вы уже сделали выбор.");
+                }
+                catch (Exception)
+                {
+                    await context.ReplyAsync("Что-то пошло не так.");
+                    throw;
+                }
             });
             cmdHandler.HearCommand(new Regex(@"^!(?:quiz|викторина|game|play)$", RegexOptions.IgnoreCase), async context =>
             {
