@@ -2,6 +2,7 @@
 using System.Linq;
 using VkNet.Model;
 using VkNetLongpoll;
+using VkNet.Model.Keyboard;
 using VkNet.Model.RequestParams;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
@@ -117,7 +118,7 @@ namespace VkMusicQuizBot
                 {
                     quiz = (await new QuizSession(downloader).Create(null, context.Body.FromId.Value)).Start();
                 } 
-                catch (System.Exception)
+                catch (Exception)
                 {
                     await context.ReplyAsync("К сожалению, что-то пошло не так..");
                     throw;
@@ -128,10 +129,32 @@ namespace VkMusicQuizBot
                 currentQuizSessions[context.Body.PeerId.Value] = currentProccesses.Append(quiz.Process);
 
                 await quiz.Wait();
-                await context.SendAsync(@$"
-                    Викторина окончена!
-                    Победители: {quiz.Process.Answers.Where(answ => answ.Option.IsRight).Select(answ => answ.Owner)}
-                ");
+
+                KeyboardBuilder keyboard = new KeyboardBuilder();
+                foreach (var opt in quiz.Process.Options)
+                    keyboard.AddButton(new MessageKeyboardButtonAction
+                    {
+                        Label = opt.Title
+                    });
+
+                await context.SendAsync(new MessagesSendParams
+                {
+                    Message = @$"
+                        Викторина окончена!
+                        Победители: {quiz.Process.Answers.Where(answ => answ.Option.IsRight).Select(answ => answ.Owner)}
+                    ",
+                    Keyboard = keyboard.Build()
+                });
+            });
+            cmdHandler.HearCommand(new Regex(@"^!(?:top|топ) (\d{1,2})", RegexOptions.IgnoreCase), async context =>
+            {
+                var topUsers = db.Users.OrderBy(u => u.Statistic.WinCount).Take(10);
+                var users = await context.Api.Users.GetAsync(topUsers.Select(u => u.Id));
+
+                await context.ReplyAsync(users.Count == 0
+                    ? $"Топ пуст."
+                    : $"Топ игроков: {String.Join("\n", users.Select(u => $"[id{u.Id}|{u.FirstName} {u.LastName}]"))}"
+                );
             });
         }
 
