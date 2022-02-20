@@ -11,16 +11,15 @@ namespace VkMusicQuizBot
 {
     public class SpotifyAPI : ISpotifyAPI
     {
-        private HttpClient client;
         private SpotifyAuth auth;
+        private HttpClient client;
         public uint Version { get; set; } = 1;
         public SpotifyAPI(SpotifyAuth auth, IDictionary<string, string> headers = null, HttpMessageHandler clientHandler = null)
         {
             this.auth = auth ?? throw new ArgumentNullException(nameof(auth));
             client = clientHandler != null ? new HttpClient(clientHandler) : new HttpClient();
-            foreach (var param in (headers ?? new Dictionary<string, string>()).Append(new KeyValuePair<string, string>("Authorization", $"Bearer {this.auth}")))
-                client.DefaultRequestHeaders.Add(param.Key, param.Value);
         }
+        public ISpotifyExceptionResponseHandler ExceptionHandler = new SpotifyExceptionResponseHandler();
 
         public async Task<T> Delete<T>(string method, IDictionary<string, string> urlParams = null) where T : class
         {
@@ -48,7 +47,7 @@ namespace VkMusicQuizBot
                 ? Call(method, HttpMethod.Put, data as HttpContent)
                 : Put(method, new StringContent(JsonSerializer.Serialize(data), Encoding.UTF8, "application/json"));
 
-        public async Task<T> Post<T, R>(string method, R data) 
+        public async Task<T> Post<T, R>(string method, R data)
             where T : class
             where R : class
         {
@@ -56,8 +55,8 @@ namespace VkMusicQuizBot
             return await JsonSerializer.DeserializeAsync<T>(await response.ReadAsStreamAsync());
         }
         public Task<HttpContent> Post<T>(string method, T data) where T : class =>
-            typeof(HttpContent).IsAssignableFrom(data.GetType()) 
-                ? Call(method, HttpMethod.Post, data as HttpContent) 
+            typeof(HttpContent).IsAssignableFrom(data.GetType())
+                ? Call(method, HttpMethod.Post, data as HttpContent)
                 : Post(method, new StringContent(JsonSerializer.Serialize(data), Encoding.UTF8, "application/json"));
 
         public async Task<T> Get<T>(string method, IDictionary<string, string> urlParams = null) where T : class
@@ -74,35 +73,50 @@ namespace VkMusicQuizBot
             return Call(method, HttpMethod.Get, null);
         }
 
-        private string encodeQueryData(IDictionary<string, string> urlParams = null) => 
+        private string encodeQueryData(IDictionary<string, string> urlParams = null) =>
             $"?{String.Join("&", urlParams.Select(p => HttpUtility.UrlEncode($"{p.Key}={p.Value}")).ToArray())}";
 
         public Task<T> Call<T>(string method, HttpMethod reqMethod, HttpContent data = null) where T : class =>
             Call<T>(new Uri(constructMethorUrl(method)), reqMethod, data);
         public Task<HttpContent> Call(string method, HttpMethod reqMethod, HttpContent data = null) =>
             Call(new Uri(constructMethorUrl(method)), reqMethod, data);
-        public async Task<T> Call<T>(Uri uri, HttpMethod reqMethod, HttpContent data = null) where T : class
+        public Task<T> Call<T>(Uri uri, HttpMethod reqMethod, HttpContent data = null) where T : class =>
+            Call<T>(constructDefaultRequest(uri, reqMethod, data));
+        public Task<HttpContent> Call(Uri uri, HttpMethod reqMethod, HttpContent data = null) =>
+            Call(constructDefaultRequest(uri, reqMethod, data));
+        private HttpRequestMessage constructDefaultRequest(Uri uri, HttpMethod reqMethod, HttpContent data = null)
         {
-            var response = await Call(uri, reqMethod, data);
-            return await JsonSerializer.DeserializeAsync<T>(await response.ReadAsStreamAsync());
-        }
-        public async Task<HttpContent> Call(Uri uri, HttpMethod reqMethod, HttpContent data = null)
-        {
-            var response = await client.SendAsync(new HttpRequestMessage
+            var request = new HttpRequestMessage
             {
                 Method = reqMethod,
                 Content = data,
                 RequestUri = uri
-            });
+            };
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", auth.AccessToken);
+            return request;
+        }
+            
+        public async Task<T> Call<T>(HttpRequestMessage request) where T : class
+        {
+            var response = await Call(request);
+            return await JsonSerializer.DeserializeAsync<T>(await response.ReadAsStreamAsync());
+        }
+        public async Task<HttpContent> Call(HttpRequestMessage request)
+        {
+            var response = await client.SendAsync(request);
 
             if (!response.IsSuccessStatusCode)
-                await handleErrorSpotifyResponse(response);
+                await ExceptionHandler.Handle(this, auth, response);
 
             return response.Content;
         }
-        private async Task handleErrorSpotifyResponse(HttpResponseMessage response)
+
+        private string constructMethorUrl(string method) => $@"https://api.spotify.com/v{Version}/{method}";
+    }
+    class SpotifyExceptionResponseHandler : ISpotifyExceptionResponseHandler
+    {
+        public async Task Handle(ISpotifyAPI api, SpotifyAuth auth, HttpResponseMessage response)
         {
-            var status = response.StatusCode.ToString();
             string message = String.Empty;
             SpotifyExceptionResponseBody responseBody = null;
 
@@ -116,16 +130,24 @@ namespace VkMusicQuizBot
                 message = "JSON-parse has failed";
             }
 
-            if (status == "Unauthorized")
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                bool isSuccessfullyRefreshed = await auth.TryRefresh(api);
+                if (isSuccessfullyRefreshed)
+                    return;
                 throw new SpotifyAuthorizationException(message);
+            }
             else if (responseBody != null)
                 throw new SpotifyRequestException(responseBody);
 
             throw new SpotifyRequestException(message);
         }
-
-        private string constructMethorUrl(string method) => $@"https://api.spotify.com/v{Version}/{method}";
     }
+    public interface ISpotifyExceptionResponseHandler
+    {
+        public Task Handle(ISpotifyAPI api, SpotifyAuth auth, HttpResponseMessage response);
+    }
+
     public interface ISpotifyAPI
     {
         public uint Version { get; set; }
@@ -145,5 +167,7 @@ namespace VkMusicQuizBot
         public Task<HttpContent> Call(Uri uri, HttpMethod reqMethod, HttpContent data = null);
         public Task<T> Call<T>(string method, HttpMethod reqMethod, HttpContent data = null) where T : class;
         public Task<HttpContent> Call(string method, HttpMethod reqMethod, HttpContent data = null);
+        public Task<T> Call<T>(HttpRequestMessage request) where T : class;
+        public Task<HttpContent> Call(HttpRequestMessage request);
     }
 }

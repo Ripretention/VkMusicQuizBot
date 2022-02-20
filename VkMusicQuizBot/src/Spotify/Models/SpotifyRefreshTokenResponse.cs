@@ -2,7 +2,7 @@
 
 namespace VkMusicQuizBot
 {
-    public class SpotifyRefreshTokenResponse : SpotifyModel
+    public class SpotifyRefreshTokenResponse
     {
         [JsonPropertyName("access_token")]
         public string AccessToken { get; set; }

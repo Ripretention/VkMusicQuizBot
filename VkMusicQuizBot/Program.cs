@@ -8,7 +8,7 @@ namespace VkMusicQuizBot
 {
     class Program
     {
-        static async Task Main(string[] args)
+        public static async Task Main(string[] args)
         {
             var cfg = new BotConfigurationBuilder().Build().Get<BotConfiguration>();
             var db = new FileDatabase(cfg.Database.PathFolder);
@@ -24,7 +24,6 @@ namespace VkMusicQuizBot
             admCommands.Release();
             commonCommands.Release();
 
-            Console.WriteLine("GO");
             await longpoll.Start();
         }
     }
