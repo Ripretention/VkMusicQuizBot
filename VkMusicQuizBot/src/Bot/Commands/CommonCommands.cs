@@ -13,15 +13,18 @@ namespace VkMusicQuizBot
     {
         private IFileDatabase db;
         private IAudioTrackDownloader downloader;
+        private IAudioTrackExtractor audioTrackExtractor;
         private Dictionary<long, IEnumerable<QuizProcess>> currentQuizSessions = new Dictionary<long, IEnumerable<QuizProcess>>();
         public CommonCommands(
             LongpollEventHandler lpHandler,
             IFileDatabase db,
+            IAudioTrackExtractor audioTrackExtractor,
             IAudioTrackDownloader downloader
         ) : base(lpHandler)
         {
             this.db = db;
             this.downloader = downloader;
+            this.audioTrackExtractor = audioTrackExtractor;
         }
 
         public override void Release()
@@ -116,7 +119,7 @@ namespace VkMusicQuizBot
                 PendingQuiz quiz;
                 try
                 {
-                    quiz = (await new QuizSession(downloader).Create(null, context.Body.FromId.Value)).Start();
+                    quiz = (await new QuizSession(downloader).Create(await audioTrackExtractor.Extract(), context.Body.FromId.Value)).Start();
                 } 
                 catch (Exception)
                 {
@@ -125,26 +128,33 @@ namespace VkMusicQuizBot
                 }
                 IEnumerable<QuizProcess> currentProccesses;
                 if (!currentQuizSessions.TryGetValue(context.Body.PeerId.Value, out currentProccesses))
+                {
+                    currentProccesses = new List<QuizProcess>();
                     currentQuizSessions.Add(context.Body.PeerId.Value, new List<QuizProcess>());
+                }
                 currentQuizSessions[context.Body.PeerId.Value] = currentProccesses.Append(quiz.Process);
 
-                await quiz.Wait();
-
+                await context.SendAudioMessage(quiz.Process.QuestionBody);
+                
                 KeyboardBuilder keyboard = new KeyboardBuilder();
-                foreach (var opt in quiz.Process.Options)
+                for (int i = 0; i < quiz.Process.Options.Count(); i++)
                     keyboard.AddButton(new MessageKeyboardButtonAction
                     {
-                        Label = opt.Title
+                        Label = quiz.Process.Options.ElementAt(i).Title,
+                        Type = VkNet.Enums.SafetyEnums.KeyboardButtonActionType.Callback,
+                        Payload = $"cmd: !quiz select {context.Body.PeerId}-{context.Body.FromId} {i}"
                     });
-
                 await context.SendAsync(new MessagesSendParams
                 {
-                    Message = @$"
-                        Викторина окончена!
-                        Победители: {quiz.Process.Answers.Where(answ => answ.Option.IsRight).Select(answ => answ.Owner)}
-                    ",
+                    Message = @"Каков трек?",
                     Keyboard = keyboard.Build()
                 });
+
+                await quiz.Wait();
+                await context.SendAsync(@$"
+                    Викторина окончена!
+                    Победители: {quiz.Process.Answers.Where(answ => answ.Option.IsRight).Select(answ => answ.Owner)}
+                ");
             });
             cmdHandler.HearCommand(new Regex(@"^!(?:top|топ) (\d{1,2})", RegexOptions.IgnoreCase), async context =>
             {

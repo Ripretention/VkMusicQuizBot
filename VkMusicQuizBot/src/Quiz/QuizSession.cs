@@ -23,7 +23,8 @@ namespace VkMusicQuizBot
                 throw new InvalidOperationException("QuizProcess already created");
 
             var pickedTracks = pickRandomTracks(tracks);
-            var questionTrackBody = await downloader.Download(pickedTracks.First());
+            var randomTrack = pickedTracks.ElementAt(new Random().Next(0, pickedTracks.Count() - 1));
+            var questionTrackBody = await downloader.Download(randomTrack);
 
             process = new QuizProcess
             {
@@ -32,7 +33,7 @@ namespace VkMusicQuizBot
                 Options = pickedTracks.Select(track => new QuizOption
                 {
                     Title = track.Title,
-                    IsRight = track.Title == pickedTracks.First().Title
+                    IsRight = track.Title == randomTrack.Title
                 })
             };
             return this;
@@ -51,7 +52,7 @@ namespace VkMusicQuizBot
 
             var rnd = new Random();
             var pickedTracks = new List<AudioTrack>();
-            for (int randomIndex = rnd.Next(0, tracks.Count()); pickedTracks.Count < 3; randomIndex = rnd.Next(0, tracks.Count()))
+            for (int randomIndex = rnd.Next(0, tracks.Count()-1); pickedTracks.Count < 3; randomIndex = rnd.Next(0, tracks.Count()))
                 if (pickedTracks.All(track => track.Title != tracks.ElementAt(randomIndex).Title))
                     pickedTracks.Add(tracks.ElementAt(randomIndex));
 

@@ -39,7 +39,7 @@ namespace VkMusicQuizBot
             var response = await api.Call<SpotifyRefreshTokenResponse>(request);
             AccessToken = response.AccessToken;
 
-            this?.OnRefresh(this);
+            OnRefresh?.Invoke(this);
         }
         public async Task<bool> TryRefresh(ISpotifyAPI api)
         {

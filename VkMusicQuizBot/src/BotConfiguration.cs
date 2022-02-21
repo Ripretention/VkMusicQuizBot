@@ -32,7 +32,7 @@ namespace VkMusicQuizBot
     }
     public class SpotifyConfiguration
     {
-        public string PlaylistSourceTitle { get; set; }
+        public string PlaylistSourceId { get; set; }
         public SpotifyAuthConfiguration Auth { get; set; }
     }
     public class SpotifyAuthConfiguration

@@ -25,7 +25,7 @@ namespace VkMusicQuizBot
         [JsonPropertyName("album")]
         public SpotifyAlbum Album { get; set; }
         [JsonPropertyName("artists")]
-        public IEnumerable<SpotifyArtist> Artists;
+        public IEnumerable<SpotifyArtist> Artists { get; set; }
 
         [JsonPropertyName("duration_ms")]
         public long DurationMs { get; set; }

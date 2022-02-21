@@ -106,8 +106,23 @@ namespace VkMusicQuizBot
             var response = await client.SendAsync(request);
 
             if (!response.IsSuccessStatusCode)
-                await ExceptionHandler.Handle(this, auth, response);
-
+            {
+                var handlingResult = await ExceptionHandler.Handle(this, auth, response);
+                if (handlingResult)
+                {
+                    var clonedRequest = new HttpRequestMessage
+                    {
+                        Content = request.Content,
+                        Method = request.Method,
+                        RequestUri = request.RequestUri
+                    };
+                    foreach (var header in request.Headers)
+                        clonedRequest.Headers.Add(header.Key, header.Value);
+                    clonedRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", auth.AccessToken);
+                    return await Call(clonedRequest);
+                }
+            }
+            
             return response.Content;
         }
 
@@ -115,7 +130,7 @@ namespace VkMusicQuizBot
     }
     class SpotifyExceptionResponseHandler : ISpotifyExceptionResponseHandler
     {
-        public async Task Handle(ISpotifyAPI api, SpotifyAuth auth, HttpResponseMessage response)
+        public async Task<bool> Handle(ISpotifyAPI api, SpotifyAuth auth, HttpResponseMessage response)
         {
             string message = String.Empty;
             SpotifyExceptionResponseBody responseBody = null;
@@ -134,7 +149,7 @@ namespace VkMusicQuizBot
             {
                 bool isSuccessfullyRefreshed = await auth.TryRefresh(api);
                 if (isSuccessfullyRefreshed)
-                    return;
+                    return true;
                 throw new SpotifyAuthorizationException(message);
             }
             else if (responseBody != null)
@@ -145,7 +160,7 @@ namespace VkMusicQuizBot
     }
     public interface ISpotifyExceptionResponseHandler
     {
-        public Task Handle(ISpotifyAPI api, SpotifyAuth auth, HttpResponseMessage response);
+        public Task<bool> Handle(ISpotifyAPI api, SpotifyAuth auth, HttpResponseMessage response);
     }
 
     public interface ISpotifyAPI

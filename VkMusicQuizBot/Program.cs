@@ -15,12 +15,20 @@ namespace VkMusicQuizBot
 
             var downloader = new AudioTrackDownloader(cfg.FFMpeg);
 
+            var spotifyAuth = new SpotifyAuth(cfg.Spotify.Auth);
+            var spotify = new SpotifyClient(new SpotifyAPI(spotifyAuth));
+
             var vkApi = new VkApi();
             await vkApi.AuthorizeAsync(new VkNet.Model.ApiAuthParams { AccessToken = cfg.Vk.AccessToken });
             var longpoll = new Longpoll(vkApi, (long)cfg.Vk.GroupId);
 
             var admCommands = new AdministrationCommands(longpoll.Handler, db, cfg.Developers);
-            var commonCommands = new CommonCommands(longpoll.Handler, db, downloader);
+            var commonCommands = new CommonCommands(
+                longpoll.Handler, 
+                db, 
+                new SpotifyAudioTrackExtractor(spotify, cfg.Spotify.PlaylistSourceId), 
+                downloader
+            );
             admCommands.Release();
             commonCommands.Release();
 
