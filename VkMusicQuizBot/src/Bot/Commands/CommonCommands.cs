@@ -134,16 +134,20 @@ namespace VkMusicQuizBot
                 }
                 currentQuizSessions[context.Body.PeerId.Value] = currentProccesses.Append(quiz.Process);
 
-                await context.SendAudioMessage(quiz.Process.QuestionBody);
+                await context.SendAudioMessage(quiz.Process.QuestionBody, "ogg");
                 
                 KeyboardBuilder keyboard = new KeyboardBuilder();
+                keyboard.SetInline(true);
                 for (int i = 0; i < quiz.Process.Options.Count(); i++)
                     keyboard.AddButton(new MessageKeyboardButtonAction
                     {
                         Label = quiz.Process.Options.ElementAt(i).Title,
                         Type = VkNet.Enums.SafetyEnums.KeyboardButtonActionType.Callback,
-                        Payload = $"cmd: !quiz select {context.Body.PeerId}-{context.Body.FromId} {i}"
-                    });
+                        Payload = System.Text.Json.JsonSerializer.Serialize(new Utils.CommandPayload 
+                        { 
+                            Command = $"!quiz select {context.Body.PeerId}-{context.Body.FromId.Value} {i}"
+                        }),
+                    }, VkNet.Enums.SafetyEnums.KeyboardButtonColor.Default);
                 await context.SendAsync(new MessagesSendParams
                 {
                     Message = @"Каков трек?",
@@ -153,7 +157,7 @@ namespace VkMusicQuizBot
                 await quiz.Wait();
                 await context.SendAsync(@$"
                     Викторина окончена!
-                    Победители: {quiz.Process.Answers.Where(answ => answ.Option.IsRight).Select(answ => answ.Owner)}
+                    Победители: {String.Join(", ", quiz.Process.Answers.Where(answ => answ.Option.IsRight).Select(answ => $"[{(answ.Owner < 0 ? "club" : "id")}{answ.Owner}|member]"))}
                 ");
             });
             cmdHandler.HearCommand(new Regex(@"^!(?:top|топ) (\d{1,2})", RegexOptions.IgnoreCase), async context =>

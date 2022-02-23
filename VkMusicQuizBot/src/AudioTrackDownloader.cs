@@ -62,7 +62,9 @@ namespace VkMusicQuizBot
             var youtube = new YoutubeClient();
             var streamManifest = await youtube.Videos.Streams.GetManifestAsync(trackUrl);
 
-            return streamManifest?.GetAudioOnlyStreams().OrderBy(a => a.Bitrate).First().Url;
+            return streamManifest == null 
+                ? null
+                : streamManifest.GetAudioStreams().OrderBy(a => a.Bitrate).First().Url;
         }
 
         private async Task<string> searchTrackUrl(AudioTrack track)

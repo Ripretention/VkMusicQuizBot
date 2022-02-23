@@ -18,13 +18,19 @@ namespace VkMusicQuizBot
         public async Task<QuizSession> Create(IEnumerable<AudioTrack> tracks, long creatorId)
         {
             if (tracks == null || tracks.Count() == 0)
-                throw new ArgumentException("Tracks can't be empty.");
+                throw new ArgumentException("Tracks mustn't be empty.");
             if (process != null)
                 throw new InvalidOperationException("QuizProcess already created");
 
-            var pickedTracks = pickRandomTracks(tracks);
-            var randomTrack = pickedTracks.ElementAt(new Random().Next(0, pickedTracks.Count() - 1));
-            var questionTrackBody = await downloader.Download(randomTrack);
+            IEnumerable<AudioTrack> pickedTracks = null; 
+            AudioTrack randomTrack = null;
+            byte[] questionTrackBody = null;
+            while (questionTrackBody == null)
+            {
+                pickedTracks = pickRandomTracks(tracks);
+                randomTrack = pickedTracks.ElementAt(new Random().Next(0, pickedTracks.Count() - 1)); 
+                questionTrackBody = await downloader.Download(randomTrack);
+            }
 
             process = new QuizProcess
             {

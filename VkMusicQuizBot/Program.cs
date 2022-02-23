@@ -32,6 +32,8 @@ namespace VkMusicQuizBot
             admCommands.Release();
             commonCommands.Release();
 
+            Console.WriteLine("Longpoll has been started");
+
             await longpoll.Start();
         }
     }
