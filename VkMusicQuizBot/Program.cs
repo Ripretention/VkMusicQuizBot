@@ -29,8 +29,10 @@ namespace VkMusicQuizBot
                 new SpotifyAudioTrackExtractor(spotify, cfg.Spotify.PlaylistSourceId), 
                 downloader
             );
+            var newMessageHandler = new NewMessageHandler(longpoll.Handler);
             admCommands.Release();
             commonCommands.Release();
+            newMessageHandler.Release();
 
             Console.WriteLine("Longpoll has been started");
 

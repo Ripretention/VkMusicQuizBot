@@ -51,16 +51,14 @@ namespace VkMusicQuizBot
                     DisableMentions = true 
                 });
             });
-            cmdHandler.HearCommand(new Regex(@"^!(?:quiz|викторина|game|play) (?:choose|выбрать|select) (\d+)-(\d+) (\d+)", RegexOptions.IgnoreCase), async context =>
+            cmdHandler.HearCommand(new Regex(@"^!(?:quiz|викторина|game|play) (?:choose|выбрать|select) (\d+) (\d+)", RegexOptions.IgnoreCase), async context =>
             {
-                long peerId = 0;
                 long ownerId = 0;
                 int optionId = 0;
                 try
                 {
-                    peerId = long.Parse(context.Match.Groups[1].Value.Trim());
-                    ownerId = long.Parse(context.Match.Groups[2].Value.Trim());
-                    optionId = int.Parse(context.Match.Groups[3].Value.Trim());
+                    ownerId = long.Parse(context.Match.Groups[1].Value.Trim());
+                    optionId = int.Parse(context.Match.Groups[2].Value.Trim());
                 } 
                 catch (Exception)
                 {
@@ -68,10 +66,16 @@ namespace VkMusicQuizBot
                     return;
                 }
 
+                if (await db.Users.FindAsync(context.Body.FromId) == null)
+                {
+                    db.Users.Add(new User { Id = context.Body.FromId.Value });
+                    await db.SaveChangesAsync();
+                }
+
                 QuizProcess quiz;
                 try
                 {
-                    quiz = currentQuizSessions[peerId].First(qProcess => qProcess.CreatorId == ownerId);
+                    quiz = currentQuizSessions[context.Body.PeerId.Value].First(qProcess => qProcess.CreatorId == ownerId);
                 }
                 catch (Exception)
                 {
@@ -141,13 +145,13 @@ namespace VkMusicQuizBot
                 for (int i = 0; i < quiz.Process.Options.Count(); i++)
                     keyboard.AddButton(new MessageKeyboardButtonAction
                     {
-                        Label = quiz.Process.Options.ElementAt(i).Title,
-                        Type = VkNet.Enums.SafetyEnums.KeyboardButtonActionType.Callback,
+                        Label = String.Concat(quiz.Process.Options.ElementAt(i).Title.Take(40)),
+                        Type = VkNet.Enums.SafetyEnums.KeyboardButtonActionType.Text,
                         Payload = System.Text.Json.JsonSerializer.Serialize(new Utils.CommandPayload 
                         { 
-                            Command = $"!quiz select {context.Body.PeerId}-{context.Body.FromId.Value} {i}"
+                            Command = $"!quiz select {context.Body.FromId.Value} {i}"
                         }),
-                    }, VkNet.Enums.SafetyEnums.KeyboardButtonColor.Default);
+                    }, VkNet.Enums.SafetyEnums.KeyboardButtonColor.Default);;
                 await context.SendAsync(new MessagesSendParams
                 {
                     Message = @"Каков трек?",
@@ -155,10 +159,26 @@ namespace VkMusicQuizBot
                 });
 
                 await quiz.Wait();
+                var rightAnswer = quiz.Process.Options.First(opt => opt.IsRight).Title;
+                var winnersIds = quiz.Process.Answers.Where(answ => answ.Option.IsRight && answ.Owner > 0).Select(answ => answ.Owner);
+
+                if (winnersIds.Count() == 0)
+                {
+                    await context.SendAsync(@$"Викторина окончена! Верный ответ: {rightAnswer}. Победа мне.");
+                    return;
+                }
+
+                foreach (var usr in db.Users.Where(usr => winnersIds.Contains(usr.Id)))
+                    usr.Score++;
+                await db.SaveChangesAsync();
+
+                var winners = await context.Api.Users.GetAsync(winnersIds);
                 await context.SendAsync(@$"
-                    Викторина окончена!
-                    Победители: {String.Join(", ", quiz.Process.Answers.Where(answ => answ.Option.IsRight).Select(answ => $"[{(answ.Owner < 0 ? "club" : "id")}{answ.Owner}|member]"))}
+                    Викторина окончена! Верный ответ: {rightAnswer}
+                    Победители: {String.Join(", ", winners.Select(winner => $"[id{winner.Id}|{winner.LastName}]"))}
                 ");
+
+                currentQuizSessions[context.Body.PeerId.Value] = currentQuizSessions[context.Body.PeerId.Value].Where(q => q.CreatorId != quiz.Process.CreatorId);
             });
             cmdHandler.HearCommand(new Regex(@"^!(?:top|топ) (\d{1,2})", RegexOptions.IgnoreCase), async context =>
             {
