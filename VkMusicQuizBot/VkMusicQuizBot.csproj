@@ -9,6 +9,7 @@
     <PackageReference Include="FileContextCore" Version="3.4.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="6.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="6.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="6.0.0" />
     <PackageReference Include="VkNet" Version="1.67.0" />
     <PackageReference Include="VkNetLongpoll" Version="1.0.4" />
