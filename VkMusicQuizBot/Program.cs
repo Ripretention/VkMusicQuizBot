@@ -1,7 +1,7 @@
 ﻿using VkNet;
-using System;
 using VkNetLongpoll;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -23,12 +23,11 @@ namespace VkMusicQuizBot
             newMessageHandler.Release();
 
             var longpoll = servicesProvider.GetService<Longpoll>();
-            Console.WriteLine("Longpoll has been started");
-
             await longpoll.Start();
         }
         public static void ConfigureServices(IServiceCollection services)
         {
+            services.AddLogging(builder => builder.AddSimpleConsole());
             services.AddSingleton(p => new BotConfigurationBuilder().Build().Get<BotConfiguration>());
             services.AddSingleton<IFileDatabase>(p => new FileDatabase(p.GetService<BotConfiguration>().Database.PathFolder));
             services.AddSingleton<IAudioTrackDownloader>(p => new AudioTrackDownloader(p.GetService<BotConfiguration>().FFMpeg));
@@ -42,12 +41,17 @@ namespace VkMusicQuizBot
             services.AddSingleton(p => p.GetService<Longpoll>().Handler);
             services.AddSingleton<IAudioTrackExtractor>(p =>
             {
-                var spotifyAuth = new SpotifyAuth(p.GetService<BotConfiguration>().Spotify.Auth);
-                var spotify = new SpotifyClient(new SpotifyAPI(spotifyAuth));
+                var spotifyAuth = new SpotifyAuth(p.GetService<BotConfiguration>().Spotify.Auth, p.GetService<ILogger<SpotifyAuth>>());
+                var spotify = new SpotifyClient(new SpotifyAPI(spotifyAuth, null, null, p.GetService<ILogger<SpotifyAPI>>()));
                 return new SpotifyAudioTrackExtractor(spotify, p.GetService<BotConfiguration>().Spotify.PlaylistSourceId);
             });
-            services.AddSingleton<AdministrationCommands>();
             services.AddSingleton<CommonCommands>();
+            services.AddSingleton(p => new AdministrationCommands(
+                p.GetService<LongpollEventHandler>(), 
+                p.GetService<IFileDatabase>(), 
+                p.GetService<BotConfiguration>().Developers,
+                p.GetService<ILogger<AdministrationCommands>>()
+            ));
             services.AddSingleton<NewMessageHandler>();
         }
     }

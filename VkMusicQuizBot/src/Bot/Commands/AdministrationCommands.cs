@@ -3,6 +3,7 @@ using VkNet.Model;
 using VkNetLongpoll;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging;
 
 namespace VkMusicQuizBot
 {
@@ -10,9 +11,16 @@ namespace VkMusicQuizBot
     {
         private IFileDatabase db;
         private IEnumerable<int> developers;
-        public AdministrationCommands(LongpollEventHandler lpHandler, IFileDatabase db, IEnumerable<int> developers) : base(lpHandler) 
+        private ILogger<AdministrationCommands> logger;
+        public AdministrationCommands(
+            LongpollEventHandler lpHandler, 
+            IFileDatabase db, 
+            IEnumerable<int> developers, 
+            ILogger<AdministrationCommands> logger = null
+        ) : base(lpHandler) 
         {
             this.db = db;
+            this.logger = logger;
             this.developers = developers;
         }
         public override void Release()
@@ -34,10 +42,11 @@ namespace VkMusicQuizBot
                     Id = context.Body.FromId.Value,
                     Access = UserAccess.Administration
                 });
-                System.Console.WriteLine(result.State);
 
                 await db.SaveChangesAsync();
                 await context.ReplyAsync(@"👤 Вы успешно авторизовались.");
+
+                logger?.LogInformation($"User #{context.Body.FromId} has gotten [{UserAccess.Administration}] AcessLevel");
             });
             cmdHandler.HearCommand(new Regex(@"^!(?:conf.*|разрешение|add user|разрешить) ?(\d*)$", RegexOptions.IgnoreCase), async context =>
             {
@@ -62,6 +71,8 @@ namespace VkMusicQuizBot
                 }).Entity;
                 await db.SaveChangesAsync();
                 await context.ReplyAsync(@$"👤 {user.GetAppeal()} успешно авторизован.");
+
+                logger?.LogInformation($"User #{context.Body.FromId} has authorized");
             });
             cmdHandler.HearCommand(new Regex(@"^!(?:down.*|понизить|ban|unperm) ?(\d*)$", RegexOptions.IgnoreCase), async context =>
             {
@@ -91,8 +102,13 @@ namespace VkMusicQuizBot
                     await db.SaveChangesAsync();
                 }
                 await context.ReplyAsync(@$"👤 Уровень прав {user.GetAppeal()} понижен до {user.Access}.");
+
+                logger?.LogInformation($"User's #{context.Body.FromId} access level has downgraded to {user.Access}");
             });
+
+            logger?.LogDebug($"{cmdHandler.CommandsCount} admCommands have initialized");
         }
-        private bool checkAccess(Message msg) => developers.Any(id => id == msg.FromId) || db.Users.Any(usr => usr.Id == msg.FromId && usr.Access > UserAccess.Default);
+        private bool checkAccess(Message msg) => 
+            developers.Any(id => id == msg.FromId) || db.Users.Any(usr => usr.Id == msg.FromId && usr.Access > UserAccess.Default);
     }
 }

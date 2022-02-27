@@ -1,30 +1,34 @@
 ﻿using System;
-using VkNet.Enums.SafetyEnums;
-using VkNetLongpoll;
-using System.Threading.Tasks;
 using VkNet.Model;
-using VkNet.Model.GroupUpdate;
+using VkNetLongpoll;
 using System.Text.Json;
+using System.Threading.Tasks;
+using VkNet.Enums.SafetyEnums;
+using Microsoft.Extensions.Logging;
 
 namespace VkMusicQuizBot
 {
     public class NewMessageHandler
     {
         private LongpollEventHandler lpHandler;
-        public NewMessageHandler(LongpollEventHandler lpHandler)
+        private ILogger<NewMessageHandler> logger;
+        public NewMessageHandler(LongpollEventHandler lpHandler, ILogger<NewMessageHandler> logger = null)
         {
             this.lpHandler = lpHandler ?? throw new ArgumentNullException(nameof(lpHandler));
+            this.logger = logger;
         }
 
         public void Release()
         {
-            lpHandler.On<Message>(GroupUpdateType.MessageEvent, (ctx, next) => 
+            lpHandler.On<MessageContext>(GroupUpdateType.MessageNew, (ctx, next) => 
             {
-                payloadHandle(ctx);
+                logger?.LogInformation($"Message received: {((ctx.Body?.Text ?? "") == "" ? "empty" : ctx.Body.Text)}");
+                payloadHandle(ctx.Body);
 
                 next();
                 return Task.CompletedTask;
             });
+            logger?.LogDebug("Handler has initialized");
         }
 
         public void payloadHandle(Message msg)
@@ -35,6 +39,7 @@ namespace VkMusicQuizBot
             {
                 var payload = JsonSerializer.Deserialize<Utils.CommandPayload>(msg.Payload);
                 msg.Text = payload.Command;
+                logger?.LogDebug("Message payload has parsed");
             }
             catch (Exception)
             { 

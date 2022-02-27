@@ -5,6 +5,7 @@ using VkNetLongpoll;
 using VkNet.Model.Keyboard;
 using VkNet.Model.RequestParams;
 using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
 using System.Text.RegularExpressions;
 
 namespace VkMusicQuizBot
@@ -12,6 +13,7 @@ namespace VkMusicQuizBot
     public class CommonCommands : CommandsHandler
     {
         private IFileDatabase db;
+        private ILogger<CommonCommands> logger;
         private IAudioTrackDownloader downloader;
         private IAudioTrackExtractor audioTrackExtractor;
         private Dictionary<long, IEnumerable<QuizProcess>> currentQuizSessions = new Dictionary<long, IEnumerable<QuizProcess>>();
@@ -19,10 +21,12 @@ namespace VkMusicQuizBot
             LongpollEventHandler lpHandler,
             IFileDatabase db,
             IAudioTrackExtractor audioTrackExtractor,
-            IAudioTrackDownloader downloader
+            IAudioTrackDownloader downloader,
+            ILogger<CommonCommands> logger = null
         ) : base(lpHandler)
         {
             this.db = db;
+            this.logger = logger;
             this.downloader = downloader;
             this.audioTrackExtractor = audioTrackExtractor;
         }
@@ -39,17 +43,24 @@ namespace VkMusicQuizBot
                     await context.ReplyAsync(@$"🔭 [{(memberId < 0 ? "club" : "id")}{System.Math.Abs(memberId.Value)}|Пользователь] не авторизован.");
                     return;
                 }
+
                 var vkUser = (await context.Api.Users.GetAsync(new[] { user.Id }, null, VkNet.Enums.SafetyEnums.NameCase.Gen)).FirstOrDefault();
+                var userAppeal = vkUser == null 
+                    ? user.GetAppeal("Пользователя") 
+                    : $"[id{vkUser.Id}|{vkUser.FirstName} {vkUser.LastName}]";
+
                 await context.ReplyAsync(new MessagesSendParams 
                 {
                     Message = $@"
-                       👤 Профиль {(vkUser == null ? user.GetAppeal("Пользователя") : $"[id{vkUser.Id}|{vkUser.FirstName} {vkUser.LastName}]")}:
+                       👤 Профиль {userAppeal}:
                        🔑 Доступ: {user.Access}
                        💎 Счёт: {user.Score}
                        🏆 Статистика: {user.Statistic}
                     ",
                     DisableMentions = true 
                 });
+
+                logger?.LogInformation($"{userAppeal} has received statistic");
             });
             cmdHandler.HearCommand(new Regex(@"^!(?:quiz|викторина|game|play) (?:choose|выбрать|select) (\d+) (\d+)", RegexOptions.IgnoreCase), async context =>
             {
@@ -91,6 +102,8 @@ namespace VkMusicQuizBot
                         Option = quiz.Options.ElementAt(optionId)
                     });
                     await context.ReplyAsync("Ответ принят.");
+
+                    logger?.LogInformation($"User {context.Body.FromId} has voted");
                 }
                 catch (ExpiredOptionException)
                 {
@@ -158,6 +171,8 @@ namespace VkMusicQuizBot
                     Keyboard = keyboard.Build()
                 });
 
+                logger?.LogInformation($"Quiz #{context.Body.FromId} has started");
+
                 await quiz.Wait();
                 var rightAnswer = quiz.Process.Options.First(opt => opt.IsRight).Title;
                 var winnersIds = quiz.Process.Answers.Where(answ => answ.Option.IsRight && answ.Owner > 0).Select(answ => answ.Owner);
@@ -179,6 +194,7 @@ namespace VkMusicQuizBot
                 ");
 
                 currentQuizSessions[context.Body.PeerId.Value] = currentQuizSessions[context.Body.PeerId.Value].Where(q => q.CreatorId != quiz.Process.CreatorId);
+                logger?.LogInformation($"Quiz #{context.Body.FromId} has finished");
             });
             cmdHandler.HearCommand(new Regex(@"^!(?:top|топ) (\d{1,2})", RegexOptions.IgnoreCase), async context =>
             {
@@ -190,6 +206,8 @@ namespace VkMusicQuizBot
                     : $"Топ игроков: {String.Join("\n", users.Select(u => $"[id{u.Id}|{u.FirstName} {u.LastName}]"))}"
                 );
             });
+
+            logger?.LogDebug($"{cmdHandler.CommandsCount} commands have initialized");
         }
 
         private bool checkAccess(Message msg)

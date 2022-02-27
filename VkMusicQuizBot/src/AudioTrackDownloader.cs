@@ -1,23 +1,27 @@
 ﻿using System;
 using System.Linq;
 using YoutubeExplode;
-using System.Threading.Tasks;
 using System.Diagnostics;
+using System.Threading.Tasks;
 using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
 
 namespace VkMusicQuizBot
 {
     public class AudioTrackDownloader : IAudioTrackDownloader
     {
-        private YoutubeClient youtube = new YoutubeClient();
         private ProcessStartInfo ffmpegInfo;
+        private ILogger<AudioTrackDownloader> logger;
+        private YoutubeClient youtube = new YoutubeClient();
         private string outputFormat;
-        public AudioTrackDownloader(FFMpegConfiguration cfg, string outputFormat = "ogg")
+        public AudioTrackDownloader(FFMpegConfiguration cfg, string outputFormat = "ogg", ILogger<AudioTrackDownloader> logger = null)
         {
             ffmpegInfo = new ProcessStartInfo(cfg.Path);
+            ffmpegInfo.UseShellExecute = false;
             ffmpegInfo.RedirectStandardInput = true;
             ffmpegInfo.RedirectStandardOutput = true;
-            ffmpegInfo.UseShellExecute = false;
+
+            this.logger = logger;
             this.outputFormat = outputFormat;
         }
 
@@ -50,6 +54,7 @@ namespace VkMusicQuizBot
                 chunks.Add(bytes);
             }
 
+            logger?.LogDebug($"Recieved {chunks.Count} chunks by [{url.Take(20)}...]");
             return chunks.SelectMany(c => c).ToArray();
         }
         private void prepareFFmpeg(string url)
@@ -78,10 +83,10 @@ namespace VkMusicQuizBot
                 break;
             }
 
+            logger?.LogDebug($"SourceUrl for [{track.Title}] has{(trackUrl == null ? "n't" : "")} founded");
             return trackUrl;
         }
     }
-
     public interface IAudioTrackDownloader
     {
         public Task<byte[]> Download(AudioTrack track);

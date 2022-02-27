@@ -6,16 +6,24 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
 
 namespace VkMusicQuizBot
 {
     public class SpotifyAPI : ISpotifyAPI
     {
         private SpotifyAuth auth;
+        private ILogger<SpotifyAPI> logger;
         private HttpClient client;
         public uint Version { get; set; } = 1;
-        public SpotifyAPI(SpotifyAuth auth, IDictionary<string, string> headers = null, HttpMessageHandler clientHandler = null)
+        public SpotifyAPI(
+            SpotifyAuth auth, 
+            IDictionary<string, string> headers = null, 
+            HttpMessageHandler clientHandler = null,
+            ILogger<SpotifyAPI> logger = null
+        )
         {
+            this.logger = logger;
             this.auth = auth ?? throw new ArgumentNullException(nameof(auth));
             client = clientHandler != null ? new HttpClient(clientHandler) : new HttpClient();
         }
@@ -122,7 +130,8 @@ namespace VkMusicQuizBot
                     return await Call(clonedRequest);
                 }
             }
-            
+
+            logger?.LogInformation($"[{request.Method}] {request.RequestUri.LocalPath}: {(response.IsSuccessStatusCode ? "OK" : "Exception")}");
             return response.Content;
         }
 

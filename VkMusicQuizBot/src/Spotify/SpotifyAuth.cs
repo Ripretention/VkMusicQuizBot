@@ -2,17 +2,20 @@
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
 
 namespace VkMusicQuizBot
 {
     public class SpotifyAuth
     {
-        public string AccessToken { get; private set; }
         private string clientId;
         private string clientSecret;
         private string refreshToken;
-        public SpotifyAuth(SpotifyAuthConfiguration cfg)
+        private ILogger<SpotifyAuth> logger;
+        public string AccessToken { get; private set; }
+        public SpotifyAuth(SpotifyAuthConfiguration cfg, ILogger<SpotifyAuth> logger = null)
         {
+            this.logger = logger;
             clientId = cfg.ClientId;
             AccessToken = cfg.AccessToken;
             clientSecret = cfg.ClientSecret;
@@ -36,6 +39,8 @@ namespace VkMusicQuizBot
             };
             request.Headers.Authorization = null;
 
+            logger?.LogInformation("SpotifyAuth has been refreshing");
+
             var response = await api.Call<SpotifyRefreshTokenResponse>(request);
             AccessToken = response.AccessToken;
 
@@ -50,6 +55,7 @@ namespace VkMusicQuizBot
             }
             catch (Exception)
             {
+                logger?.LogWarning("SpotifyAuth refresh has failed");
                 result = false;
             }
 
