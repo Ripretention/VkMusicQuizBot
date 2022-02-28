@@ -35,7 +35,7 @@ namespace VkMusicQuizBot
         {
             var cmdHandler = lpHandler.CreateGroup(checkAccess);
             cmdHandler.HearCommand(new Regex(@"^!(?:stat|стат|профиль|profile) ?(\d*)$", RegexOptions.IgnoreCase), async context =>
-            { 
+            {
                 var memberId = (await new Utils.MemberIdResolver(context.Api).Resolve(context.Match?.Groups[1]?.Value)) ?? context.Body.FromId;
                 var user = await db.Users.FindAsync(memberId.Value);
                 if (user == null)
@@ -45,11 +45,11 @@ namespace VkMusicQuizBot
                 }
 
                 var vkUser = (await context.Api.Users.GetAsync(new[] { user.Id }, null, VkNet.Enums.SafetyEnums.NameCase.Gen)).FirstOrDefault();
-                var userAppeal = vkUser == null 
-                    ? user.GetAppeal("Пользователя") 
+                var userAppeal = vkUser == null
+                    ? user.GetAppeal("Пользователя")
                     : $"[id{vkUser.Id}|{vkUser.FirstName} {vkUser.LastName}]";
 
-                await context.ReplyAsync(new MessagesSendParams 
+                await context.ReplyAsync(new MessagesSendParams
                 {
                     Message = $@"
                        👤 Профиль {userAppeal}:
@@ -57,7 +57,7 @@ namespace VkMusicQuizBot
                        💎 Счёт: {user.Score}
                        🏆 Статистика: {user.Statistic}
                     ",
-                    DisableMentions = true 
+                    DisableMentions = true
                 });
 
                 logger?.LogInformation($"{userAppeal} has received statistic");
@@ -70,7 +70,7 @@ namespace VkMusicQuizBot
                 {
                     ownerId = long.Parse(context.Match.Groups[1].Value.Trim());
                     optionId = int.Parse(context.Match.Groups[2].Value.Trim());
-                } 
+                }
                 catch (Exception)
                 {
                     await context.ReplyAsync("Неверный интидификатор");
@@ -121,6 +121,7 @@ namespace VkMusicQuizBot
             });
             cmdHandler.HearCommand(new Regex(@"^!(?:quiz|викторина|game|play)$", RegexOptions.IgnoreCase), async context =>
             {
+                Console.WriteLine(123);
                 var user = await db.Users.FindAsync(context.Body.FromId.Value);
                 if (user == null || user.Access < UserAccess.Default)
                 {
@@ -133,68 +134,85 @@ namespace VkMusicQuizBot
                     return;
                 }
 
-                PendingQuiz quiz;
-                try
+                await context.SendAsync($"📣 Викторина #{context.Body.FromId} начата!");
+                System.Threading.ThreadPool.QueueUserWorkItem(async _ =>
                 {
-                    quiz = (await new QuizSession(downloader).Create(await audioTrackExtractor.Extract(), context.Body.FromId.Value)).Start();
-                } 
-                catch (Exception)
-                {
-                    await context.ReplyAsync("К сожалению, что-то пошло не так..");
-                    throw;
-                }
-                IEnumerable<QuizProcess> currentProccesses;
-                if (!currentQuizSessions.TryGetValue(context.Body.PeerId.Value, out currentProccesses))
-                {
-                    currentProccesses = new List<QuizProcess>();
-                    currentQuizSessions.Add(context.Body.PeerId.Value, new List<QuizProcess>());
-                }
-                currentQuizSessions[context.Body.PeerId.Value] = currentProccesses.Append(quiz.Process);
-
-                await context.SendAudioMessage(quiz.Process.QuestionBody, "ogg");
-                
-                KeyboardBuilder keyboard = new KeyboardBuilder();
-                keyboard.SetInline(true);
-                for (int i = 0; i < quiz.Process.Options.Count(); i++)
-                    keyboard.AddButton(new MessageKeyboardButtonAction
+                    PendingQuiz quiz;
+                    try
                     {
-                        Label = String.Concat(quiz.Process.Options.ElementAt(i).Title.Take(40)),
-                        Type = VkNet.Enums.SafetyEnums.KeyboardButtonActionType.Text,
-                        Payload = System.Text.Json.JsonSerializer.Serialize(new Utils.CommandPayload 
-                        { 
-                            Command = $"!quiz select {context.Body.FromId.Value} {i}"
-                        }),
-                    }, VkNet.Enums.SafetyEnums.KeyboardButtonColor.Default);;
-                await context.SendAsync(new MessagesSendParams
-                {
-                    Message = @"Каков трек?",
-                    Keyboard = keyboard.Build()
+                        quiz = (await new QuizSession(downloader).Create(await audioTrackExtractor.Extract(), context.Body.FromId.Value)).Start();
+                    }
+                    catch (Exception)
+                    {
+                        await context.ReplyAsync("⛔ К сожалению, что-то пошло не так..");
+                        throw;
+                    }
+                    IEnumerable<QuizProcess> currentProccesses;
+                    if (!currentQuizSessions.TryGetValue(context.Body.PeerId.Value, out currentProccesses))
+                    {
+                        currentProccesses = new List<QuizProcess>();
+                        currentQuizSessions.Add(context.Body.PeerId.Value, new List<QuizProcess>());
+                    }
+                    currentQuizSessions[context.Body.PeerId.Value] = currentProccesses.Append(quiz.Process);
+
+                    await context.SendAudioMessage(quiz.Process.QuestionBody, "ogg");
+
+                    KeyboardBuilder keyboard = new KeyboardBuilder();
+                    keyboard.SetInline(true);
+                    for (int i = 0; i < quiz.Process.Options.Count(); i++)
+                        keyboard.AddButton(new MessageKeyboardButtonAction
+                        {
+                            Label = new[] { "1⃣", "2⃣", "3⃣", "4⃣" }?.ElementAtOrDefault(i) ?? (i+1).ToString(),
+                            Type = VkNet.Enums.SafetyEnums.KeyboardButtonActionType.Text,
+                            Payload = System.Text.Json.JsonSerializer.Serialize(new Utils.CommandPayload
+                            {
+                                Command = $"!quiz select {context.Body.FromId.Value} {i}"
+                            }),
+                        }, VkNet.Enums.SafetyEnums.KeyboardButtonColor.Default);
+                    await context.SendAsync(new MessagesSendParams
+                    {
+                        Message = $"🔢 Каков трек? \n {String.Join("\n", quiz.Process.Options.Select((opt, i) => $"{i+1}. {opt.Title}"))}",
+                        Keyboard = keyboard.Build()
+                    });
+
+                    logger?.LogInformation($"Quiz #{context.Body.FromId} has started");
+
+                    await quiz.Wait();
+                    var rightAnswer = quiz.Process.Options.First(opt => opt.IsRight).Title;
+                    var quizMembersIds = quiz.Process.Answers.Where(answ => answ.Owner > 0).Select(answ => answ.Owner);
+                    var winnersIds = quiz.Process.Answers.Where(answ => answ.Option.IsRight && answ.Owner > 0).Select(answ => answ.Owner);
+
+                    foreach (var usr in db.Users.Where(usr => quizMembersIds.Contains(usr.Id)))
+                    {
+                        if (winnersIds.Contains(usr.Id))
+                        {
+                            usr.Score++;
+                            usr.Statistic.WinCount++;
+                        }
+                        else
+                            usr.Statistic.LoseCount++;
+                    }
+                    await db.SaveChangesAsync();
+
+                    var winners = winnersIds.Count() > 0
+                        ? await context.Api.Users.GetAsync(winnersIds)
+                        : null;
+                    await context.SendAsync(new MessagesSendParams 
+                    { 
+                        Message = @$"
+                            📣 Викторина окончена!
+                            🎵 Верный ответ: [id1|{rightAnswer}]
+                            🎉 Победители: {( winners != null 
+                                ? String.Join(", ", winners.Select(winner => $"[id{winner.Id}|{winner.LastName}]")) 
+                                : "никто" 
+                            )}
+                        ",
+                        DisableMentions = true
+                    });
+
+                    currentQuizSessions[context.Body.PeerId.Value] = currentQuizSessions[context.Body.PeerId.Value].Where(q => q.CreatorId != quiz.Process.CreatorId);
+                    logger?.LogInformation($"Quiz #{context.Body.FromId} has finished");
                 });
-
-                logger?.LogInformation($"Quiz #{context.Body.FromId} has started");
-
-                await quiz.Wait();
-                var rightAnswer = quiz.Process.Options.First(opt => opt.IsRight).Title;
-                var winnersIds = quiz.Process.Answers.Where(answ => answ.Option.IsRight && answ.Owner > 0).Select(answ => answ.Owner);
-
-                if (winnersIds.Count() == 0)
-                {
-                    await context.SendAsync(@$"Викторина окончена! Верный ответ: {rightAnswer}. Победа мне.");
-                    return;
-                }
-
-                foreach (var usr in db.Users.Where(usr => winnersIds.Contains(usr.Id)))
-                    usr.Score++;
-                await db.SaveChangesAsync();
-
-                var winners = await context.Api.Users.GetAsync(winnersIds);
-                await context.SendAsync(@$"
-                    Викторина окончена! Верный ответ: {rightAnswer}
-                    Победители: {String.Join(", ", winners.Select(winner => $"[id{winner.Id}|{winner.LastName}]"))}
-                ");
-
-                currentQuizSessions[context.Body.PeerId.Value] = currentQuizSessions[context.Body.PeerId.Value].Where(q => q.CreatorId != quiz.Process.CreatorId);
-                logger?.LogInformation($"Quiz #{context.Body.FromId} has finished");
             });
             cmdHandler.HearCommand(new Regex(@"^!(?:top|топ) (\d{1,2})", RegexOptions.IgnoreCase), async context =>
             {
@@ -209,7 +227,6 @@ namespace VkMusicQuizBot
 
             logger?.LogDebug($"{cmdHandler.CommandsCount} commands have initialized");
         }
-
         private bool checkAccess(Message msg)
         {
             var usr = db.Users.Find(msg.FromId.Value);
