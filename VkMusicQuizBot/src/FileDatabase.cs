@@ -20,9 +20,14 @@ namespace VkMusicQuizBot
             optionsBuilder.UseFileContextDatabase(path);
         }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
-        { 
-
+        {
             modelBuilder.Entity<User>()
+                .OwnsOne(p => p.Statistic, od =>
+                {
+                    od.Property<long>("Id");
+                    od.HasKey("Id");
+                    od.ToTable("database-statistics");
+                })
                 .ToTable("database");
         }
     }

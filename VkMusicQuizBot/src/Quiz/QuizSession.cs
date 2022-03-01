@@ -28,8 +28,9 @@ namespace VkMusicQuizBot
             while (questionTrackBody == null)
             {
                 pickedTracks = pickRandomTracks(tracks);
-                randomTrack = pickedTracks.ElementAt(new Random().Next(0, pickedTracks.Count() - 1)); 
-                questionTrackBody = await downloader.Download(randomTrack);
+                randomTrack = pickedTracks.ElementAt(new Random().Next(0, pickedTracks.Count() - 1));
+                var randomStart = TimeSpan.FromSeconds(randomTrack.Duration.Seconds - new Random().Next(0, randomTrack.Duration.Seconds));
+                questionTrackBody = await downloader.Download(randomTrack, randomStart);
             }
 
             process = new QuizProcess

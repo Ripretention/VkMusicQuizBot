@@ -121,7 +121,6 @@ namespace VkMusicQuizBot
             });
             cmdHandler.HearCommand(new Regex(@"^!(?:quiz|викторина|game|play)$", RegexOptions.IgnoreCase), async context =>
             {
-                Console.WriteLine(123);
                 var user = await db.Users.FindAsync(context.Body.FromId.Value);
                 if (user == null || user.Access < UserAccess.Default)
                 {
@@ -194,11 +193,24 @@ namespace VkMusicQuizBot
                     }
                     await db.SaveChangesAsync();
 
+                    keyboard = new KeyboardBuilder();
+                    keyboard.SetInline(true);
+                    keyboard.AddButton(new MessageKeyboardButtonAction 
+                    { 
+                        Label = "🔄 Играть снова",
+                        Type = VkNet.Enums.SafetyEnums.KeyboardButtonActionType.Text,
+                        Payload = System.Text.Json.JsonSerializer.Serialize(new Utils.CommandPayload
+                        {
+                            Command = $"!play"
+                        }),
+                    });
+
                     var winners = winnersIds.Count() > 0
                         ? await context.Api.Users.GetAsync(winnersIds)
                         : null;
                     await context.SendAsync(new MessagesSendParams 
                     { 
+                        Keyboard = keyboard.Build(),
                         Message = @$"
                             📣 Викторина окончена!
                             🎵 Верный ответ: [id1|{rightAnswer}]

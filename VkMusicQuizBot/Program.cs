@@ -15,6 +15,9 @@ namespace VkMusicQuizBot
             ConfigureServices(services);
             using var servicesProvider = services.BuildServiceProvider();
 
+            var db = servicesProvider.GetService<IFileDatabase>();
+            
+
             var amdCommands = servicesProvider.GetService<AdministrationCommands>();
             var commonCommands = servicesProvider.GetService<CommonCommands>();
             var newMessageHandler = servicesProvider.GetService<NewMessageHandler>();

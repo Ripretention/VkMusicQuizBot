@@ -45,7 +45,7 @@ namespace VkMusicQuizBot.Tests.Quiz
             };
 
             audioDownloaderMock
-                .Setup(fd => fd.Download(It.IsAny<AudioTrack>()))
+                .Setup(fd => fd.Download(It.IsAny<AudioTrack>(), It.IsAny<TimeSpan>(), null))
                 .Returns(Task.FromResult(new byte[] { 0, 0, 0 }));
         }
 

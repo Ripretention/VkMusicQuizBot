@@ -25,7 +25,7 @@ namespace VkMusicQuizBot
             this.outputFormat = outputFormat;
         }
 
-        public async Task<byte[]> Download(AudioTrack track)
+        public async Task<byte[]> Download(AudioTrack track, TimeSpan start, TimeSpan? duration = null)
         {
             var trackUrl = await searchTrackUrl(track);
             var trackDownloadUrl = trackUrl != null 
@@ -33,15 +33,15 @@ namespace VkMusicQuizBot
                 : null;
 
             return trackDownloadUrl != null
-                ? await getBuffer(trackDownloadUrl)
+                ? await getBuffer(trackDownloadUrl, start, duration)
                 : null;
         }
 
-        private async Task<byte[]> getBuffer(string url)
+        private async Task<byte[]> getBuffer(string url, TimeSpan start, TimeSpan? duration = null)
         {
             var chunks = new List<byte[]>();
 
-            prepareFFmpeg(url);
+            prepareFFmpeg(url, start, duration);
             var ffmpegProcess = new Process();
             ffmpegProcess.StartInfo = ffmpegInfo;
             ffmpegProcess.Start();
@@ -57,9 +57,9 @@ namespace VkMusicQuizBot
             logger?.LogDebug($"Recieved {chunks.Count} chunks by [{url.Take(20)}...]");
             return chunks.SelectMany(c => c).ToArray();
         }
-        private void prepareFFmpeg(string url)
+        private void prepareFFmpeg(string url, TimeSpan start, TimeSpan? duration)
         {
-            ffmpegInfo.Arguments = $"-loglevel panic -i {url} -ss 00:01:00 -t 10 -vn -f {outputFormat} pipe:1";
+            ffmpegInfo.Arguments = $"-loglevel panic -i {url} -ss {start} -t {duration ?? TimeSpan.FromSeconds(10)} -vn -f {outputFormat} pipe:1";
         }
 
         private async Task<string> getTrackDownloadUrl(string trackUrl)
@@ -89,7 +89,7 @@ namespace VkMusicQuizBot
     }
     public interface IAudioTrackDownloader
     {
-        public Task<byte[]> Download(AudioTrack track);
+        public Task<byte[]> Download(AudioTrack track, TimeSpan start, TimeSpan? duration = null);
     }
     public class AudioTrack
     {
