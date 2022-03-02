@@ -39,7 +39,7 @@ namespace VkMusicQuizBot
         public override string ToString() =>
             TotalCount <= 0
                 ? "неизвестна"
-                : $"{WinCount.ToString("N0")} побед / {TotalCount.ToString("N0")} игр ({((float)WinCount *100/TotalCount).ToString("P")} winrate)";
+                : $"{WinCount:N0} побед / {TotalCount:N0} игр ({((float)WinCount/TotalCount):P} побед)";
     }
 
     public interface IUser

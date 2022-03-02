@@ -22,7 +22,7 @@ namespace VkMusicQuizBot
                 : Task.FromResult(extractedAudioTracks);
         public async Task<IEnumerable<AudioTrack>> Refresh()
         {
-            var playlist = await spotify.GetPlaylistTracks(playlistId, 100);
+            var playlist = await spotify.GetPlaylistTracks(playlistId, 10000);
             List<AudioTrack> tracks = new List<AudioTrack>();
 
             foreach (var track in playlist)

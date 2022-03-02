@@ -54,7 +54,7 @@ namespace VkMusicQuizBot
                     Message = $@"
                        👤 Профиль {userAppeal}:
                        🔑 Доступ: {user.Access}
-                       💎 Счёт: {user.Score}
+                       💎 Счёт: {user.Score:N0}
                        🏆 Статистика: {user.Statistic}
                     ",
                     DisableMentions = true
@@ -73,7 +73,7 @@ namespace VkMusicQuizBot
                 }
                 catch (Exception)
                 {
-                    await context.ReplyAsync("Неверный интидификатор");
+                    await context.ReplyAsync("📛 Неверный интидификатор");
                     return;
                 }
 
@@ -90,7 +90,7 @@ namespace VkMusicQuizBot
                 }
                 catch (Exception)
                 {
-                    await context.ReplyAsync($"Викторина не существует.");
+                    await context.ReplyAsync($"❌ Викторина не существует.");
                     return;
                 }
 
@@ -101,21 +101,21 @@ namespace VkMusicQuizBot
                         Owner = context.Body.FromId.Value,
                         Option = quiz.Options.ElementAt(optionId)
                     });
-                    await context.ReplyAsync("Ответ принят.");
+                    await context.ReplyAsync("✔ Ответ принят.");
 
                     logger?.LogInformation($"User {context.Body.FromId} has voted");
                 }
                 catch (ExpiredOptionException)
                 {
-                    await context.ReplyAsync("Викторина заверешена");
+                    await context.ReplyAsync("💯 Викторина заверешена");
                 }
                 catch (ArgumentException)
                 {
-                    await context.ReplyAsync("Вы уже сделали выбор.");
+                    await context.ReplyAsync("❌ Вы уже сделали выбор.");
                 }
                 catch (Exception)
                 {
-                    await context.ReplyAsync("Что-то пошло не так.");
+                    await context.ReplyAsync("💢 Что-то пошло не так.");
                     throw;
                 }
             });
@@ -226,14 +226,14 @@ namespace VkMusicQuizBot
                     logger?.LogInformation($"Quiz #{context.Body.FromId} has finished");
                 });
             });
-            cmdHandler.HearCommand(new Regex(@"^!(?:top|топ) (\d{1,2})", RegexOptions.IgnoreCase), async context =>
+            cmdHandler.HearCommand(new Regex(@"^!(?:top|топ)$", RegexOptions.IgnoreCase), async context =>
             {
-                var topUsers = db.Users.OrderBy(u => u.Statistic.WinCount).Take(10);
+                var topUsers = db.Users.OrderByDescending(u => u.Statistic.WinCount).Take(10);
                 var users = await context.Api.Users.GetAsync(topUsers.Select(u => u.Id));
 
                 await context.ReplyAsync(users.Count == 0
-                    ? $"Топ пуст."
-                    : $"Топ игроков: {String.Join("\n", users.Select(u => $"[id{u.Id}|{u.FirstName} {u.LastName}]"))}"
+                    ? $"⭕ Топ пуст."
+                    : $"📜 Топ игроков: \n {String.Join("\n", users.Select((u, i) => $"[id{u.Id}|{i+1}. {u.FirstName} {u.LastName}] ({(topUsers?.ElementAtOrDefault(i)?.Score ?? 0).ToString("N0")}"))}"
                 );
             });
 
