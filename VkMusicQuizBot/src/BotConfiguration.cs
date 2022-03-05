@@ -1,23 +1,7 @@
-﻿using Microsoft.Extensions.Configuration;
-
-namespace VkMusicQuizBot
+﻿namespace VkMusicQuizBot
 {
-    public class BotConfigurationBuilder
+    public class BaseConfiguration
     {
-        private readonly string configFilePath;
-        public BotConfigurationBuilder(string configFilePath = "appsettings.json") 
-        {
-            this.configFilePath = configFilePath;
-        }
-        public IConfiguration Build() => new ConfigurationBuilder().AddJsonFile(configFilePath).Build();
-    }
-
-    public class BotConfiguration
-    {
-        public VkConfiguration Vk { get; set; }
-        public FFMpegConfiguration FFMpeg { get; set; }
-        public SpotifyConfiguration Spotify { get; set; }
-        public DatabaseConfiguration Database { get; set; }
         public System.Collections.Generic.IEnumerable<int> Developers { get; set; }
     }
     public class VkConfiguration

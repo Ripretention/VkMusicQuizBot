@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Options;
 
 namespace VkMusicQuizBot.Tests.Spotify
 {
@@ -36,7 +37,11 @@ namespace VkMusicQuizBot.Tests.Spotify
                     };
                 });
 
-            auth = new SpotifyAuth(new SpotifyAuthConfiguration { AccessToken = "ACCESS_TOKEN", RefreshToken = "REFRESH_TOKEN" });
+            var spotifyAuthMock = new Mock<IOptionsMonitor<SpotifyAuthConfiguration>>();
+            spotifyAuthMock
+                .Setup(ld => ld.CurrentValue)
+                .Returns(new SpotifyAuthConfiguration { AccessToken = "ACCESS_TOKEN", RefreshToken = "REFRESH_TOKEN" });
+            auth = new SpotifyAuth(spotifyAuthMock.Object);
             api = new SpotifyAPI(auth, null, messageHandlerMock.Object);
         }
 

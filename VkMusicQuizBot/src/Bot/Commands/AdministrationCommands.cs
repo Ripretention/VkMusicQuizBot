@@ -1,27 +1,27 @@
 ﻿using System.Linq;
 using VkNet.Model;
 using VkNetLongpoll;
-using System.Collections.Generic;
-using System.Text.RegularExpressions;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
+using System.Text.RegularExpressions;
 
 namespace VkMusicQuizBot
 {
     public class AdministrationCommands : CommandsHandler
     {
         private IFileDatabase db;
-        private IEnumerable<int> developers;
+        private IOptionsMonitor<BaseConfiguration> cfg;
         private ILogger<AdministrationCommands> logger;
         public AdministrationCommands(
             LongpollEventHandler lpHandler, 
-            IFileDatabase db, 
-            IEnumerable<int> developers, 
+            IFileDatabase db,
+            IOptionsMonitor<BaseConfiguration> cfg, 
             ILogger<AdministrationCommands> logger = null
         ) : base(lpHandler) 
         {
             this.db = db;
             this.logger = logger;
-            this.developers = developers;
+            this.cfg = cfg;
         }
         public override void Release()
         {
@@ -109,6 +109,6 @@ namespace VkMusicQuizBot
             logger?.LogDebug($"{cmdHandler.CommandsCount} admCommands have initialized");
         }
         private bool checkAccess(Message msg) => 
-            developers.Any(id => id == msg.FromId) || db.Users.Any(usr => usr.Id == msg.FromId && usr.Access > UserAccess.Default);
+            cfg.CurrentValue.Developers.Any(id => id == msg.FromId) || db.Users.Any(usr => usr.Id == msg.FromId && usr.Access > UserAccess.Default);
     }
 }

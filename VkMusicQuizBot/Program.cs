@@ -1,6 +1,7 @@
 ﻿using VkNet;
 using VkNetLongpoll;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,11 +13,11 @@ namespace VkMusicQuizBot
         public static async Task Main(string[] args)
         {
             var services = new ServiceCollection();
-            ConfigureServices(services);
-            using var servicesProvider = services.BuildServiceProvider();
+            var configuration = new ConfigurationBuilder();
+            Configure(configuration, "appsettings.json");
+            ConfigureServices(services, configuration.Build());
 
-            var db = servicesProvider.GetService<IFileDatabase>();
-            
+            using var servicesProvider = services.BuildServiceProvider();
 
             var amdCommands = servicesProvider.GetService<AdministrationCommands>();
             var commonCommands = servicesProvider.GetService<CommonCommands>();
@@ -28,34 +29,40 @@ namespace VkMusicQuizBot
             var longpoll = servicesProvider.GetService<Longpoll>();
             await longpoll.Start();
         }
-        public static void ConfigureServices(IServiceCollection services)
+        public static void Configure(ConfigurationBuilder builder, string path)
+        {
+            builder.AddJsonFile(path);
+        }
+        public static void ConfigureServices(IServiceCollection services, IConfigurationRoot configuration)
         {
             services.AddLogging(builder => builder.AddSimpleConsole());
-            services.AddSingleton(p => new BotConfigurationBuilder().Build().Get<BotConfiguration>());
-            services.AddSingleton<IFileDatabase>(p => new FileDatabase(p.GetService<BotConfiguration>().Database.PathFolder));
-            services.AddSingleton<IAudioTrackDownloader>(p => new AudioTrackDownloader(p.GetService<BotConfiguration>().FFMpeg));
-            services.AddSingleton<VkNet.Abstractions.IVkApi>(p =>
-            {
-                var vkApi = new VkApi();
-                vkApi.Authorize(new VkNet.Model.ApiAuthParams { AccessToken = p.GetService<BotConfiguration>().Vk.AccessToken });
-                return vkApi;
-            });
-            services.AddSingleton(p => new Longpoll(p.GetService<VkNet.Abstractions.IVkApi>(), (long)p.GetService<BotConfiguration>().Vk.GroupId));
-            services.AddSingleton(p => p.GetService<Longpoll>().Handler);
-            services.AddSingleton<IAudioTrackExtractor>(p =>
-            {
-                var spotifyAuth = new SpotifyAuth(p.GetService<BotConfiguration>().Spotify.Auth, p.GetService<ILogger<SpotifyAuth>>());
-                var spotify = new SpotifyClient(new SpotifyAPI(spotifyAuth, null, null, p.GetService<ILogger<SpotifyAPI>>()));
-                return new SpotifyAudioTrackExtractor(spotify, p.GetService<BotConfiguration>().Spotify.PlaylistSourceId);
-            });
-            services.AddSingleton<CommonCommands>();
-            services.AddSingleton(p => new AdministrationCommands(
-                p.GetService<LongpollEventHandler>(), 
-                p.GetService<IFileDatabase>(), 
-                p.GetService<BotConfiguration>().Developers,
-                p.GetService<ILogger<AdministrationCommands>>()
-            ));
-            services.AddSingleton<NewMessageHandler>();
+            services
+                .Configure<BaseConfiguration>(configuration)
+                .Configure<VkConfiguration>(configuration.GetSection("Vk"))
+                .Configure<FFMpegConfiguration>(configuration.GetSection("FFmpeg"))
+                .Configure<SpotifyConfiguration>(configuration.GetSection("Spotify"))
+                .Configure<DatabaseConfiguration>(configuration.GetSection("Database"))
+                .Configure<SpotifyAudioTrackExtractor>(configuration.GetSection("Spotify:Auth"));
+            services
+                .AddSingleton<IFileDatabase>(p => new FileDatabase(p.GetService<IOptions<DatabaseConfiguration>>().Value.PathFolder))
+                .AddSingleton<IAudioTrackDownloader, AudioTrackDownloader>()
+                .AddSingleton<VkNet.Abstractions.IVkApi>(p =>
+                {
+                    var vkApi = new VkApi();
+                    vkApi.Authorize(new VkNet.Model.ApiAuthParams { AccessToken = p.GetService<IOptions<VkConfiguration>>().Value.AccessToken });
+                    return vkApi;
+                })
+                .AddSingleton(p => new Longpoll(p.GetService<VkNet.Abstractions.IVkApi>(), (long)p.GetService<IOptions<VkConfiguration>>().Value.GroupId))
+                .AddSingleton(p => p.GetService<Longpoll>().Handler)
+                .AddSingleton<IAudioTrackExtractor>(p =>
+                {
+                    var spotifyAuth = new SpotifyAuth(p.GetService<IOptionsMonitor<SpotifyAuthConfiguration>>(), p.GetService<ILogger<SpotifyAuth>>());
+                    var spotify = new SpotifyClient(new SpotifyAPI(spotifyAuth, null, null, p.GetService<ILogger<SpotifyAPI>>()));
+                    return new SpotifyAudioTrackExtractor(spotify, p.GetService<IOptions<SpotifyConfiguration>>().Value.PlaylistSourceId);
+                })
+                .AddSingleton<CommonCommands>()
+                .AddSingleton<AdministrationCommands>()
+                .AddSingleton<NewMessageHandler>();
         }
     }
 }

@@ -2,24 +2,24 @@
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using Microsoft.Extensions.Options; 
 using Microsoft.Extensions.Logging;
 
 namespace VkMusicQuizBot
 {
     public class SpotifyAuth
     {
-        private string clientId;
-        private string clientSecret;
-        private string refreshToken;
+        private string clientId { get => cfg.CurrentValue.ClientId; }
+        private string clientSecret { get => cfg.CurrentValue.ClientSecret; }
+        private string refreshToken { get => cfg.CurrentValue.RefreshToken; }
+        public string AccessToken { get => cfg.CurrentValue.AccessToken; }
+
         private ILogger<SpotifyAuth> logger;
-        public string AccessToken { get; private set; }
-        public SpotifyAuth(SpotifyAuthConfiguration cfg, ILogger<SpotifyAuth> logger = null)
+        private IOptionsMonitor<SpotifyAuthConfiguration> cfg;
+        public SpotifyAuth(IOptionsMonitor<SpotifyAuthConfiguration> cfg, ILogger<SpotifyAuth> logger = null)
         {
+            this.cfg = cfg;
             this.logger = logger;
-            clientId = cfg.ClientId;
-            AccessToken = cfg.AccessToken;
-            clientSecret = cfg.ClientSecret;
-            refreshToken = cfg.RefreshToken;
         }
 
         public async Task Refresh(ISpotifyAPI api)
@@ -42,7 +42,7 @@ namespace VkMusicQuizBot
             logger?.LogInformation("SpotifyAuth has been refreshing");
 
             var response = await api.Call<SpotifyRefreshTokenResponse>(request);
-            AccessToken = response.AccessToken;
+            cfg.CurrentValue.AccessToken = response.AccessToken;
 
             OnRefresh?.Invoke(this);
         }

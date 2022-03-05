@@ -9,6 +9,7 @@ using System.Threading;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using Microsoft.Extensions.Options;
 
 namespace VkMusicQuizBot.Tests.Spotify
 {
@@ -27,7 +28,12 @@ namespace VkMusicQuizBot.Tests.Spotify
                 .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
                 .Returns((HttpRequestMessage request, CancellationToken token) => httpMessageHandle(request));
 
-            auth = new SpotifyAuth(new SpotifyAuthConfiguration { AccessToken = "ACCESS_TOKEN", RefreshToken = "REFRESH_TOKEN" });
+            var spotifyAuthConfigMock = new Mock<IOptionsMonitor<SpotifyAuthConfiguration>>();
+            spotifyAuthConfigMock
+                .Setup(fd => fd.CurrentValue)
+                .Returns(new SpotifyAuthConfiguration { AccessToken = "ACCESS_TOKEN", RefreshToken = "REFRESH_TOKEN" });
+
+            auth = new SpotifyAuth(spotifyAuthConfigMock.Object);
             api = new SpotifyAPI(auth, null, messageHandlerMock.Object);
         }
 

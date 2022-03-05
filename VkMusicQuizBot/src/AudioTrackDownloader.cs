@@ -4,6 +4,7 @@ using YoutubeExplode;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
 
 namespace VkMusicQuizBot
@@ -14,9 +15,9 @@ namespace VkMusicQuizBot
         private ILogger<AudioTrackDownloader> logger;
         private YoutubeClient youtube = new YoutubeClient();
         private string outputFormat;
-        public AudioTrackDownloader(FFMpegConfiguration cfg, string outputFormat = "ogg", ILogger<AudioTrackDownloader> logger = null)
+        public AudioTrackDownloader(IOptions<FFMpegConfiguration> cfg, string outputFormat = "ogg", ILogger<AudioTrackDownloader> logger = null)
         {
-            ffmpegInfo = new ProcessStartInfo(cfg.Path);
+            ffmpegInfo = new ProcessStartInfo(cfg.Value.Path);
             ffmpegInfo.UseShellExecute = false;
             ffmpegInfo.RedirectStandardInput = true;
             ffmpegInfo.RedirectStandardOutput = true;

@@ -1,21 +1,16 @@
 ﻿using Moq;
 using System.Net.Http;
 using NUnit.Framework;
-using System.Text.Json;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Options;
 
 namespace VkMusicQuizBot.Tests.Spotify
 {
     public class SpotifyAuthTest
     {
         private Mock<ISpotifyAPI> spotifyApiMock = new Mock<ISpotifyAPI>();
-        private SpotifyAuthConfiguration authCfg = new SpotifyAuthConfiguration
-        {
-            AccessToken = "1232dfsa",
-            ClientId = "123dsda",
-            ClientSecret = "dqdqwedqw",
-            RefreshToken = "wfwefwef"
-        };
+        private Mock<IOptionsMonitor<SpotifyAuthConfiguration>> spotifyAuthCfgMock = new Mock<IOptionsMonitor<SpotifyAuthConfiguration>>();
+        
         [SetUp]
         public void Setup()
         {
@@ -27,13 +22,22 @@ namespace VkMusicQuizBot.Tests.Spotify
                     ExpiresIn = 3000,
                     TokenType = "Bearer"
                 }));
+            spotifyAuthCfgMock
+                .Setup(ld => ld.CurrentValue)
+                .Returns(new SpotifyAuthConfiguration 
+                { 
+                    AccessToken = "1232dfsa",
+                    ClientId = "123dsda",
+                    ClientSecret = "dqdqwedqw",
+                    RefreshToken = "wfwefwef"
+                });
         }
 
         [Test]
         public async Task RefreshTest()
         {
             var refreshed = false;
-            var auth = new SpotifyAuth(authCfg);
+            var auth = new SpotifyAuth(spotifyAuthCfgMock.Object);
             auth.OnRefresh += _ =>
             {
                 refreshed = true;
